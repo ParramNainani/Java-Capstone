@@ -1,27 +1,33 @@
-
 package gui;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class LoginFrame extends JFrame {
-
+    private final CardLayout leftCardLayout = new CardLayout();
+    private final JPanel leftContainer = new JPanel(leftCardLayout);
+    
     private final CardLayout formCardLayout = new CardLayout();
     private final JPanel formContainer = new JPanel(formCardLayout);
-
+    
     private final JButton loginTab = new JButton("Login");
     private final JButton signupTab = new JButton("Sign Up");
-
     private final JLabel loginMsg = new JLabel(" ");
     private final JLabel signupMsg = new JLabel(" ");
-
+    
     private JTextField loginIdentifierField;
     private JPasswordField loginPasswordField;
-
+    
     private JTextField signupNameField;
     private JTextField signupUsernameField;
     private JTextField signupEmailField;
@@ -29,8 +35,10 @@ public class LoginFrame extends JFrame {
     private JPasswordField signupConfirmField;
     private JTextField signupCollegeIdField;
     private JTextField signupDobField;
-
+    
     private final List<User> users = new ArrayList<>();
+    
+    private String selectedRole = "Student"; 
 
     public LoginFrame() {
         setTitle("EXAMIFY - Login");
@@ -38,87 +46,141 @@ public class LoginFrame extends JFrame {
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(true);
-
-        AnimatedBackgroundPanel root = new AnimatedBackgroundPanel();
-        root.setLayout(new GridLayout(1, 2));
-
-        JPanel leftPanel = buildBrandPanel();
-        JPanel rightPanel = buildAuthPanel();
-
-        root.add(leftPanel);
-        root.add(rightPanel);
-
-        setContentPane(root);
-
-        seedDemoUser();
-        setMode("login");
         
-        // DEV BYPASS
-        Timer bypassTimer = new Timer(500, e -> {
-            dispose();
-            new StudentDashboard(users.get(0)).setVisible(true);
-        });
-        bypassTimer.setRepeats(false);
-        bypassTimer.start();
+        AnimatedBackground root = new AnimatedBackground();
+        root.setLayout(new GridLayout(1, 2));
+        
+        leftContainer.setOpaque(false);
+        leftContainer.add(buildLandingCard(), "landing");
+        leftContainer.add(buildAuthCard(), "auth");
+        
+        JPanel rightPanel = buildIllustrationPanel();
+        
+        root.add(leftContainer);
+        root.add(rightPanel);
+        
+        setContentPane(root);
+        
+        leftCardLayout.show(leftContainer, "landing");
     }
-
-    private void seedDemoUser() {
-        users.add(new User(
-                "Niyati Jha",
-                "niyati",
-                "niyati@example.com",
-                "123456",
-                "UPES001",
-                "2004-01-01"
-        ));
-    }
-
-    private JPanel buildBrandPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
+    
+    private JPanel buildLandingCard() {
+        JPanel panel = new JPanel(new BorderLayout());
         panel.setOpaque(false);
-
-        AnimatedBrandLabel brand = new AnimatedBrandLabel("EXAMIFY");
+        panel.setBorder(new EmptyBorder(60, 60, 60, 40));
+        
+        JLabel brand = new JLabel("EXAMIFY");
+        brand.setFont(new Font("SansSerif", Font.BOLD, 56));
         brand.setForeground(Color.WHITE);
-        brand.setFont(new Font("Serif", Font.BOLD, 60));
-
-        JPanel wrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 40, 0));
-        wrapper.setOpaque(false);
-        wrapper.add(brand);
-
-        panel.add(wrapper);
+        panel.add(brand, BorderLayout.NORTH);
+        
+        JPanel center = new JPanel(new GridBagLayout());
+        center.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        
+        // Top Glue for vertical centering
+        gbc.weighty = 1.0;
+        center.add(Box.createVerticalGlue(), gbc);
+        
+        gbc.gridy++;
+        gbc.weighty = 0.0; // Reset weight
+        gbc.insets = new Insets(10, 0, 5, 0);
+        
+        JLabel title = new JLabel("Assessment Portal");
+        title.setFont(new Font("SansSerif", Font.BOLD, 42));
+        title.setForeground(Color.WHITE);
+        center.add(title, gbc);
+        
+        gbc.gridy++;
+        gbc.insets = new Insets(0, 0, 25, 0);
+        JLabel subtitle = new JLabel("Please select your role to continue");
+        subtitle.setFont(new Font("SansSerif", Font.PLAIN, 18));
+        subtitle.setForeground(new Color(200, 210, 230));
+        center.add(subtitle, gbc);
+        
+        gbc.gridy++;
+        gbc.insets = new Insets(10, 0, 15, 0);
+        AnimatedButton studentBtn = new AnimatedButton("Student", new Color(38, 208, 206), new Color(60, 230, 225));
+        studentBtn.setPreferredSize(new Dimension(320, 55));
+        studentBtn.setForeground(new Color(10, 15, 30));
+        studentBtn.setFont(new Font("SansSerif", Font.BOLD, 20));
+        studentBtn.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        studentBtn.addActionListener(e -> showAuth("Student"));
+        center.add(studentBtn, gbc);
+        
+        gbc.gridy++;
+        gbc.insets = new Insets(5, 0, 10, 0);
+        AnimatedButton teacherBtn = new AnimatedButton("Teacher", new Color(255, 255, 255, 40), new Color(255, 255, 255, 70));
+        teacherBtn.setPreferredSize(new Dimension(320, 55));
+        teacherBtn.setForeground(Color.WHITE);
+        teacherBtn.setFont(new Font("SansSerif", Font.BOLD, 20));
+        teacherBtn.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        teacherBtn.addActionListener(e -> showAuth("Teacher"));
+        center.add(teacherBtn, gbc);
+        
+        // Bottom Glue for vertical centering
+        gbc.gridy++;
+        gbc.weighty = 1.0;
+        center.add(Box.createVerticalGlue(), gbc);
+        
+        panel.add(center, BorderLayout.CENTER);
         return panel;
     }
-
-    private JPanel buildAuthPanel() {
-        JPanel outer = new JPanel(new GridBagLayout());
-        outer.setOpaque(false);
-
-        JPanel card = new RoundedPanel(28, new Color(255, 255, 255, 35));
-        card.setLayout(new BorderLayout());
-        card.setBorder(new EmptyBorder(25, 25, 25, 25));
-        card.setPreferredSize(new Dimension(430, 560));
-
-        JPanel tabPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 0));
-        tabPanel.setOpaque(false);
-
+    
+    private void showAuth(String role) {
+        selectedRole = role;
+        setMode("login");
+        // Fade animation simulation via CardLayout standard switch (fast but clean)
+        leftCardLayout.show(leftContainer, "auth");
+    }
+    
+    private JPanel buildAuthCard() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setOpaque(false);
+        panel.setBorder(new EmptyBorder(40, 40, 40, 40));
+        
+        AnimatedButton backBtn = new AnimatedButton("← Back", new Color(0, 0, 0, 0), new Color(255, 255, 255, 40));
+        backBtn.setForeground(Color.WHITE);
+        backBtn.setFont(new Font("SansSerif", Font.BOLD, 16));
+        backBtn.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+        backBtn.setHorizontalAlignment(SwingConstants.LEFT);
+        backBtn.addActionListener(e -> leftCardLayout.show(leftContainer, "landing"));
+        
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        topPanel.setOpaque(false);
+        topPanel.add(backBtn);
+        panel.add(topPanel, BorderLayout.NORTH);
+        
+        JPanel center = new JPanel(new GridBagLayout());
+        center.setOpaque(false);
+        
+        JPanel authBox = new JPanel(new BorderLayout());
+        authBox.setOpaque(false);
+        authBox.setPreferredSize(new Dimension(400, 560));
+        
+        JPanel tabs = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 0));
+        tabs.setOpaque(false);
         styleTabButton(loginTab);
         styleTabButton(signupTab);
-
         loginTab.addActionListener(e -> setMode("login"));
         signupTab.addActionListener(e -> setMode("signup"));
-
-        tabPanel.add(loginTab);
-        tabPanel.add(signupTab);
-
+        tabs.add(loginTab);
+        tabs.add(signupTab);
+        
         formContainer.setOpaque(false);
         formContainer.add(buildLoginForm(), "login");
         formContainer.add(buildSignupForm(), "signup");
-
-        card.add(tabPanel, BorderLayout.NORTH);
-        card.add(formContainer, BorderLayout.CENTER);
-
-        outer.add(card);
-        return outer;
+        
+        authBox.add(tabs, BorderLayout.NORTH);
+        authBox.add(formContainer, BorderLayout.CENTER);
+        
+        center.add(authBox);
+        panel.add(center, BorderLayout.CENTER);
+        
+        return panel;
     }
 
     private JPanel buildLoginForm() {
@@ -140,10 +202,14 @@ public class LoginFrame extends JFrame {
         panel.add(createField("Password", loginPasswordField));
         panel.add(Box.createVerticalStrut(18));
 
-        JButton loginButton = createPrimaryButton("Login");
+        AnimatedButton loginButton = new AnimatedButton("Login", Color.WHITE, new Color(220, 230, 255));
+        loginButton.setForeground(new Color(30, 40, 60));
+        loginButton.setFont(new Font("SansSerif", Font.BOLD, 16));
+        loginButton.setBorder(BorderFactory.createEmptyBorder(12, 20, 12, 20));
+        loginButton.setAlignmentX(Component.LEFT_ALIGNMENT);
         loginButton.addActionListener(this::handleLogin);
 
-        JButton switchButton = createLinkButton("Don’t have an account? Sign up");
+        JButton switchButton = createLinkButton("Don't have an account? Sign up");
         switchButton.addActionListener(e -> setMode("signup"));
 
         panel.add(loginButton);
@@ -184,10 +250,14 @@ public class LoginFrame extends JFrame {
         panel.add(Box.createVerticalStrut(10));
         panel.add(createField("College ID", signupCollegeIdField));
         panel.add(Box.createVerticalStrut(10));
-        panel.add(createField("Date of Birth (yyyy-mm-dd)", signupDobField));
+        panel.add(createField("Date of Birth", signupDobField));
         panel.add(Box.createVerticalStrut(16));
 
-        JButton signupButton = createPrimaryButton("Sign Up");
+        AnimatedButton signupButton = new AnimatedButton("Sign Up", Color.WHITE, new Color(220, 230, 255));
+        signupButton.setForeground(new Color(30, 40, 60));
+        signupButton.setFont(new Font("SansSerif", Font.BOLD, 16));
+        signupButton.setBorder(BorderFactory.createEmptyBorder(12, 20, 12, 20));
+        signupButton.setAlignmentX(Component.LEFT_ALIGNMENT);
         signupButton.addActionListener(this::handleSignup);
 
         JButton switchButton = createLinkButton("Already have an account? Login");
@@ -210,7 +280,6 @@ public class LoginFrame extends JFrame {
         label.setForeground(Color.WHITE);
         label.setFont(new Font("SansSerif", Font.BOLD, 14));
         label.setAlignmentX(Component.LEFT_ALIGNMENT);
-
         field.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         wrapper.add(label);
@@ -232,27 +301,20 @@ public class LoginFrame extends JFrame {
     }
 
     private void styleField(JComponent comp) {
-        comp.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
-        comp.setPreferredSize(new Dimension(340, 46));
+        comp.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        comp.setPreferredSize(new Dimension(340, 40));
+        // Add a subtle drop shadow-like border by layering CompoundBorders
         comp.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(220, 230, 255, 80), 1),
-                new EmptyBorder(10, 12, 10, 12)
+                BorderFactory.createLineBorder(new Color(255, 255, 255, 120), 1),
+                BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(new Color(0, 0, 0, 20), 2),
+                        new EmptyBorder(6, 12, 6, 12)
+                )
         ));
-        comp.setBackground(new Color(255, 255, 255, 35));
+        comp.setBackground(new Color(255, 255, 255, 30));
         comp.setForeground(Color.WHITE);
-        comp.setFont(new Font("SansSerif", Font.PLAIN, 14));
-    }
-
-    private JButton createPrimaryButton(String text) {
-        JButton button = new JButton(text);
-        button.setFocusPainted(false);
-        button.setForeground(new Color(35, 24, 71));
-        button.setBackground(new Color(183, 171, 255));
-        button.setFont(new Font("SansSerif", Font.BOLD, 16));
-        button.setBorder(new EmptyBorder(12, 20, 12, 20));
-        button.setAlignmentX(Component.LEFT_ALIGNMENT);
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        return button;
+        comp.setFont(new Font("SansSerif", Font.PLAIN, 15));
+        comp.setOpaque(true);
     }
 
     private JButton createLinkButton(String text) {
@@ -260,7 +322,7 @@ public class LoginFrame extends JFrame {
         button.setFocusPainted(false);
         button.setBorderPainted(false);
         button.setContentAreaFilled(false);
-        button.setForeground(new Color(220, 213, 255));
+        button.setForeground(new Color(220, 230, 255));
         button.setFont(new Font("SansSerif", Font.BOLD, 13));
         button.setAlignmentX(Component.LEFT_ALIGNMENT);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -271,19 +333,84 @@ public class LoginFrame extends JFrame {
         button.setFocusPainted(false);
         button.setBorderPainted(false);
         button.setContentAreaFilled(false);
-        button.setFont(new Font("SansSerif", Font.BOLD, 18));
+        button.setFont(new Font("SansSerif", Font.BOLD, 22));
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
     }
 
     private void setMode(String mode) {
         boolean isLogin = mode.equals("login");
         formCardLayout.show(formContainer, mode);
-
-        loginTab.setForeground(isLogin ? Color.WHITE : new Color(209, 200, 255));
-        signupTab.setForeground(!isLogin ? Color.WHITE : new Color(209, 200, 255));
-
+        loginTab.setForeground(isLogin ? Color.WHITE : new Color(255, 255, 255, 120));
+        signupTab.setForeground(!isLogin ? Color.WHITE : new Color(255, 255, 255, 120));
         loginMsg.setText(" ");
         signupMsg.setText(" ");
+    }
+    
+    private BufferedImage makeTransparentBackground(BufferedImage img) {
+        BufferedImage newImg = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < img.getHeight(); y++) {
+            for (int x = 0; x < img.getWidth(); x++) {
+                int argb = img.getRGB(x, y);
+                int r = (argb >> 16) & 0xff;
+                int g = (argb >> 8) & 0xff;
+                int b = argb & 0xff;
+                // Make the light grey / white checkerboard squares transparent
+                // The AI checkerboard and white edges need an aggressive threshold
+                // to blend cleanly with the dark animated background
+                if (r > 175 && g > 175 && b > 175) {
+                    newImg.setRGB(x, y, 0x00FFFFFF); // fully transparent
+                } else {
+                    newImg.setRGB(x, y, argb);
+                }
+            }
+        }
+        return newImg;
+    }
+    
+    private JPanel buildIllustrationPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setOpaque(false);
+        
+        try {
+            File imgFile = new File("gui/illustration.png");
+            if (!imgFile.exists()) {
+                imgFile = new File("src/gui/illustration.png");
+            }
+            if(imgFile.exists()) {
+                BufferedImage originalImg = ImageIO.read(imgFile);
+                BufferedImage transparentImg = makeTransparentBackground(originalImg);
+                
+                JPanel imgContainer = new JPanel(new BorderLayout()) {
+                    @Override
+                    protected void paintComponent(Graphics g) {
+                        Graphics2D g2 = (Graphics2D) g.create();
+                        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                        // Draw a soft white glowing aura to backlight the black formulas
+                        float[] dist = {0.0f, 1.0f};
+                        Color[] colors = {new Color(255, 255, 255, 140), new Color(255, 255, 255, 0)};
+                        RadialGradientPaint p = new RadialGradientPaint(
+                                new Point(getWidth()/2, getHeight()/2), 
+                                getWidth()/2.2f, dist, colors);
+                        g2.setPaint(p);
+                        g2.fillOval(30, 30, getWidth()-60, getHeight()-60);
+                        g2.dispose();
+                        super.paintComponent(g);
+                    }
+                };
+                imgContainer.setOpaque(false);
+                
+                JLabel picLabel = new JLabel(new ImageIcon(transparentImg.getScaledInstance(750, 750, Image.SCALE_SMOOTH)));
+                imgContainer.add(picLabel, BorderLayout.CENTER);
+                panel.add(imgContainer, BorderLayout.CENTER);
+            } else {
+                JLabel placeholder = new JLabel("Illustration Missing", SwingConstants.CENTER);
+                placeholder.setForeground(Color.WHITE);
+                panel.add(placeholder, BorderLayout.CENTER);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return panel;
     }
 
     private void handleSignup(ActionEvent e) {
@@ -300,22 +427,18 @@ public class LoginFrame extends JFrame {
             setError(signupMsg, "Please fill all fields.");
             return;
         }
-
         if (!email.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
             setError(signupMsg, "Enter a valid email address.");
             return;
         }
-
         if (password.length() < 6) {
             setError(signupMsg, "Password must be at least 6 characters.");
             return;
         }
-
         if (!password.equals(confirm)) {
             setError(signupMsg, "Passwords do not match.");
             return;
         }
-
         for (User u : users) {
             if (u.email.equalsIgnoreCase(email)) {
                 setError(signupMsg, "Email already exists.");
@@ -325,23 +448,10 @@ public class LoginFrame extends JFrame {
                 setError(signupMsg, "Username already exists.");
                 return;
             }
-            if (u.collegeId.equalsIgnoreCase(collegeId)) {
-                setError(signupMsg, "College ID already exists.");
-                return;
-            }
         }
 
         users.add(new User(fullName, username, email, password, collegeId, dob));
         setSuccess(signupMsg, "Signup successful. You can login now.");
-
-        signupNameField.setText("");
-        signupUsernameField.setText("");
-        signupEmailField.setText("");
-        signupPasswordField.setText("");
-        signupConfirmField.setText("");
-        signupCollegeIdField.setText("");
-        signupDobField.setText("");
-
         Timer timer = new Timer(900, evt -> setMode("login"));
         timer.setRepeats(false);
         timer.start();
@@ -375,7 +485,11 @@ public class LoginFrame extends JFrame {
         User finalFound = found;
         Timer timer = new Timer(500, evt -> {
             dispose();
-            new StudentDashboard(finalFound).setVisible(true);
+            if (selectedRole.equals("Teacher")) {
+                new AdminDashboard().setVisible(true);
+            } else {
+                new StudentDashboard(finalFound).setVisible(true);
+            }
         });
         timer.setRepeats(false);
         timer.start();
@@ -391,15 +505,15 @@ public class LoginFrame extends JFrame {
         label.setText(text);
     }
 
-    static class User {
-        String fullName;
-        String username;
-        String email;
-        String password;
-        String collegeId;
-        String dob;
+    public static class User {
+        public String fullName;
+        public String username;
+        public String email;
+        public String password;
+        public String collegeId;
+        public String dob;
 
-        User(String fullName, String username, String email, String password, String collegeId, String dob) {
+        public User(String fullName, String username, String email, String password, String collegeId, String dob) {
             this.fullName = fullName;
             this.username = username;
             this.email = email;
@@ -409,44 +523,22 @@ public class LoginFrame extends JFrame {
         }
     }
 
-    static class RoundedPanel extends JPanel {
-        private final int radius;
-        private final Color bgColor;
-
-        RoundedPanel(int radius, Color bgColor) {
-            this.radius = radius;
-            this.bgColor = bgColor;
-            setOpaque(false);
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(bgColor);
-            g2.fillRoundRect(0, 0, getWidth(), getHeight(), radius, radius);
-            g2.setColor(new Color(255, 255, 255, 55));
-            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
-            g2.dispose();
-            super.paintComponent(g);
-        }
-    }
-
-    static class AnimatedBackgroundPanel extends JPanel {
-        private final List<Particle> particles = new ArrayList<>();
+    static class AnimatedBackground extends JPanel {
+        private final List<Blob> blobs = new ArrayList<>();
         private final Timer timer;
 
-        AnimatedBackgroundPanel() {
-            setOpaque(true);
-            setBackground(new Color(21, 48, 83));
+        public AnimatedBackground() {
+            // Dark professional base background
+            setBackground(new Color(10, 15, 30));
+            
+            // Add 3 softly glowing animated blobs with increased speed
+            blobs.add(new Blob(100, 100, 2.5f, 1.8f, 700, new Color(38, 208, 206, 120))); // Cyan
+            blobs.add(new Blob(600, 300, -1.8f, -2.5f, 800, new Color(138, 43, 226, 100))); // Purple
+            blobs.add(new Blob(800, -50, -2.5f, 1.5f, 650, new Color(30, 144, 255, 110))); // Blue
 
-            for (int i = 0; i < 120; i++) {
-                particles.add(new Particle());
-            }
-
-            timer = new Timer(30, e -> {
-                for (Particle p : particles) {
-                    p.update(getWidth(), getHeight());
+            timer = new Timer(16, e -> { // ~60 FPS for smoother, faster animation
+                for (Blob b : blobs) {
+                    b.update(getWidth(), getHeight());
                 }
                 repaint();
             });
@@ -456,94 +548,100 @@ public class LoginFrame extends JFrame {
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
-
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            GradientPaint gp = new GradientPaint(
-                    0, 0, new Color(21, 48, 83),
-                    getWidth(), getHeight(), new Color(48, 95, 145)
-            );
-            g2.setPaint(gp);
-            g2.fillRect(0, 0, getWidth(), getHeight());
-
-            g2.setColor(new Color(180, 167, 255, 30));
-            g2.fillOval(60, 60, 250, 250);
-
-            g2.setColor(new Color(126, 220, 223, 25));
-            g2.fillOval(getWidth() - 300, getHeight() - 280, 230, 230);
-
-            for (Particle p : particles) {
-                p.draw(g2);
+            for (Blob b : blobs) {
+                float[] dist = {0.0f, 1.0f};
+                Color[] colors = {b.color, new Color(b.color.getRed(), b.color.getGreen(), b.color.getBlue(), 0)};
+                RadialGradientPaint p = new RadialGradientPaint(
+                        new Point((int)(b.x + b.radius/2), (int)(b.y + b.radius/2)), 
+                        b.radius/2, dist, colors);
+                g2.setPaint(p);
+                g2.fillOval((int)b.x, (int)b.y, (int)b.radius, (int)b.radius);
             }
-
             g2.dispose();
         }
-    }
 
-    static class Particle {
-        double x = Math.random() * 1200;
-        double y = Math.random() * 800;
-        double vx = -1 + Math.random() * 2;
-        double vy = -1 + Math.random() * 2;
-        int size = 3 + (int) (Math.random() * 6);
-        Color color = new Color(220, 230, 255, 120);
-
-        void update(int w, int h) {
-            x += vx * 0.5;
-            y += vy * 0.5;
-
-            if (x < -20) x = w + 20;
-            if (x > w + 20) x = -20;
-            if (y < -20) y = h + 20;
-            if (y > h + 20) y = -20;
-        }
-
-        void draw(Graphics2D g2) {
-            g2.setColor(color);
-            g2.fillOval((int) x, (int) y, size, size);
+        private static class Blob {
+            float x, y, dx, dy, radius;
+            Color color;
+            Blob(float x, float y, float dx, float dy, float radius, Color color) {
+                this.x = x; this.y = y; this.dx = dx; this.dy = dy;
+                this.radius = radius; this.color = color;
+            }
+            void update(int width, int height) {
+                x += dx; y += dy;
+                // Bounce off edges gently
+                if (x <= -radius/2 || x >= width - radius/2) dx *= -1;
+                if (y <= -radius/2 || y >= height - radius/2) dy *= -1;
+            }
         }
     }
+    
+    // Custom button with hover animation
+    static class AnimatedButton extends JButton {
+        private Color normalColor;
+        private Color hoverColor;
+        private float hoverFraction = 0f;
+        private Timer animationTimer;
+        private boolean isHovered = false;
 
-    static class AnimatedBrandLabel extends JLabel {
-        private int phase = 0;
-        private int alpha = 255;
-
-        AnimatedBrandLabel(String text) {
+        AnimatedButton(String text, Color normalColor, Color hoverColor) {
             super(text);
-            Timer timer = new Timer(90, e -> {
-                phase = (phase + 1) % 80;
-                int wave = phase % 40;
-                alpha = wave < 20 ? 150 + wave * 5 : 250 - (wave - 20) * 5;
-                repaint();
+            this.normalColor = normalColor;
+            this.hoverColor = hoverColor;
+            
+            setContentAreaFilled(false);
+            setFocusPainted(false);
+            setBorderPainted(false);
+            setCursor(new Cursor(Cursor.HAND_CURSOR));
+            
+            animationTimer = new Timer(15, e -> {
+                if (isHovered && hoverFraction < 1f) {
+                    hoverFraction += 0.1f;
+                    if (hoverFraction > 1f) hoverFraction = 1f;
+                    repaint();
+                } else if (!isHovered && hoverFraction > 0f) {
+                    hoverFraction -= 0.1f;
+                    if (hoverFraction < 0f) hoverFraction = 0f;
+                    repaint();
+                } else {
+                    animationTimer.stop();
+                }
             });
-            timer.start();
+
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent evt) {
+                    isHovered = true;
+                    animationTimer.start();
+                }
+                @Override
+                public void mouseExited(MouseEvent evt) {
+                    isHovered = false;
+                    animationTimer.start();
+                }
+            });
         }
 
         @Override
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            g2.setFont(getFont());
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            String text = getText();
-            FontMetrics fm = g2.getFontMetrics();
-            int x = 0;
-            int y = fm.getAscent() + 10;
-
-            g2.setColor(new Color(180, 167, 255, 70));
-            g2.drawString(text, x + 4, y + 4);
-
-            g2.setColor(new Color(255, 255, 255, alpha));
-            g2.drawString(text, x, y);
-
+            int r = (int)(normalColor.getRed() + (hoverColor.getRed() - normalColor.getRed()) * hoverFraction);
+            int gr = (int)(normalColor.getGreen() + (hoverColor.getGreen() - normalColor.getGreen()) * hoverFraction);
+            int b = (int)(normalColor.getBlue() + (hoverColor.getBlue() - normalColor.getBlue()) * hoverFraction);
+            g2.setColor(new Color(r, gr, b, normalColor.getAlpha())); 
+            // Respect alpha if normalColor is transparent
+            if(normalColor.getAlpha() == 0 && hoverFraction > 0) {
+                 g2.setColor(new Color(hoverColor.getRed(), hoverColor.getGreen(), hoverColor.getBlue(), (int)(hoverColor.getAlpha() * hoverFraction)));
+            }
+            
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
+            super.paintComponent(g);
             g2.dispose();
-        }
-
-        @Override
-        public Dimension getPreferredSize() {
-            FontMetrics fm = getFontMetrics(getFont());
-            return new Dimension(fm.stringWidth(getText()) + 20, fm.getHeight() + 20);
         }
     }
 }
