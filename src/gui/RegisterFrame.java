@@ -23,7 +23,8 @@ public class RegisterFrame extends JFrame {
     private JPasswordField passwordField;
     private JButton saveBtn, proceedBtn, backBtn;
     private JLabel errorLabel;
-    private LoginFrame.StudentData registeredStudent = null;
+    private static final HashMap<String, LoginFrame.User> dummyStore = new HashMap<>();
+    private LoginFrame.User registeredStudent = null;
 
     public RegisterFrame() {
         setTitle("EXAMIFY – Student Registration");
@@ -208,20 +209,19 @@ public class RegisterFrame extends JFrame {
             return;
         }
         // Check for duplicate email or student ID
-        HashMap<String, LoginFrame.StudentData> store = LoginFrame.studentStore;
-        if (store.containsKey(email)) {
+        if (dummyStore.containsKey(email)) {
             errorLabel.setText("This email is already registered.");
             return;
         }
-        for (LoginFrame.StudentData s : store.values()) {
-            if (s.studentId.equalsIgnoreCase(studentId)) {
+        for (LoginFrame.User s : dummyStore.values()) {
+            if (s.collegeId.equalsIgnoreCase(studentId)) {
                 errorLabel.setText("This student ID is already registered.");
                 return;
             }
         }
         // Save student
-        registeredStudent = new LoginFrame.StudentData(name, email, password, dob, studentId);
-        store.put(email, registeredStudent);
+        registeredStudent = new LoginFrame.User(name, name, email, password, studentId, dob);
+        dummyStore.put(email, registeredStudent);
         JOptionPane.showMessageDialog(this, "Registration successful! You may now proceed.", "Success", JOptionPane.INFORMATION_MESSAGE);
         proceedBtn.setEnabled(true);
         saveBtn.setEnabled(false);

@@ -52,6 +52,14 @@ public class LoginFrame extends JFrame {
 
         seedDemoUser();
         setMode("login");
+        
+        // DEV BYPASS
+        Timer bypassTimer = new Timer(500, e -> {
+            dispose();
+            new StudentDashboard(users.get(0)).setVisible(true);
+        });
+        bypassTimer.setRepeats(false);
+        bypassTimer.start();
     }
 
     private void seedDemoUser() {

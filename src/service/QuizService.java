@@ -1,11 +1,13 @@
 package service;
 
+import model.MCQQuestion;
 import model.Question;
 import model.Quiz;
 import model.Result;
 import model.Student;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -14,30 +16,31 @@ public class QuizService {
     public List<Quiz> getAvailableQuizzes() {
         List<Quiz> quizzes = new ArrayList<>();
 
-        List<Question> javaQuestions = new ArrayList<>();
-        javaQuestions.add(new Question("What is JVM?",
-                List.of("Java Virtual Machine", "Java Vendor Machine", "Joint Virtual Method", "None"),
-                "Java Virtual Machine"));
+        List<Question<?>> javaQuestions = new ArrayList<>();
+        
+        Map<String, String> q1Options = new HashMap<>();
+        q1Options.put("A", "Java Virtual Machine");
+        q1Options.put("B", "Java Vendor Machine");
+        q1Options.put("C", "Joint Virtual Method");
+        javaQuestions.add(new MCQQuestion(1, "What is JVM?", q1Options, "A"));
+        
+        Map<String, String> q2Options = new HashMap<>();
+        q2Options.put("A", "implement");
+        q2Options.put("B", "extends");
+        q2Options.put("C", "inherits");
+        javaQuestions.add(new MCQQuestion(2, "Which keyword is used for inheritance?", q2Options, "B"));
 
-        javaQuestions.add(new Question("Which keyword is used for inheritance?",
-                List.of("implement", "extends", "inherits", "super"),
-                "extends"));
-
-        javaQuestions.add(new Question("Which collection does not allow duplicates?",
-                List.of("List", "ArrayList", "Set", "Vector"),
-                "Set"));
-
-        Quiz javaQuiz = new Quiz(
-                "Java Basics Quiz",
-                "Programming",
-                15,
-                3,
-                10,
-                javaQuestions
-        );
-
+        Quiz javaQuiz = new Quiz("QZ-001", "Java Basics Quiz", javaQuestions, 15);
         quizzes.add(javaQuiz);
         return quizzes;
+    }
+
+    public Quiz getQuizById(String quizId) {
+        return null;
+    }
+
+    public boolean addQuiz(Quiz quiz) {
+        return quiz != null;
     }
 
     public Result evaluateQuiz(Student student, Quiz quiz, Map<Integer, String> selectedAnswers) {
@@ -45,26 +48,21 @@ public class QuizService {
         int wrong = 0;
 
         for (int i = 0; i < quiz.getQuestions().size(); i++) {
-            Question q = quiz.getQuestions().get(i);
-            String chosen = selectedAnswers.get(i);
+            Question<?> q = quiz.getQuestions().get(i);
+            String chosen = selectedAnswers.get(q.getQuestionId());
 
-            if (chosen != null && chosen.equals(q.getCorrectAnswer())) {
+            if (chosen != null && q.getCorrectAnswer().toString().equalsIgnoreCase(chosen)) {
                 correct++;
             } else {
                 wrong++;
             }
         }
 
-        int score = correct;
-        boolean passed = score >= quiz.getPassingMarks();
-
-        return new Result(student, quiz, score, correct, wrong, passed);
+        String grade = correct > 1 ? "PASS" : "FAIL";
+        return new Result(student != null ? student.getStudentId() : "Unknown", quiz.getQuizId(), correct, grade);
     }
 
     public void submitAttemptToBackend(Student student, Quiz quiz, Map<Integer, String> answers) {
-        // TODO:
-        // Replace this with JDBC/API integration later
-        // Example:
-        // responseDAO.saveResponses(student, quiz, answers);
+        // integration later
     }
 }
