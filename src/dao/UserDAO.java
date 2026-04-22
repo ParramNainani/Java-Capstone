@@ -1,11 +1,16 @@
 package dao;
 
+import model.User;
+import java.util.List;
+
 /**
- * UserDAO - Data access for users.
+ * DAO interface for User operations
  */
-public class UserDAO {
-    public boolean validateUser(String username, String password) {
-        // Implement user validation logic
-        return false;
-    }
+public interface UserDAO {
+
+    void create(User user);
+    void update(User user);
+    void delete(int id);
+    User getById(int id);
+    List<User> getAll();
 }
