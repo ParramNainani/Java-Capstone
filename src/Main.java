@@ -1,14 +1,17 @@
 // Main.java
-// Entry point for the Online Quiz & Assessment Platform
-
+// Entry point for the Online Quiz & Assessment Pla
 import gui.LoginFrame;
 
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+
 public class Main {
-    /**
-     * Main method to launch the application.
-     */
     public static void main(String[] args) {
-        // Launch the LoginFrame GUI
-        new LoginFrame();
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception ignored) {
+        }
+
+        SwingUtilities.invokeLater(() -> new LoginFrame().setVisible(true));
     }
 }

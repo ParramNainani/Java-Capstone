@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EXAMIFY</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg1:#153053;
+      --bg2:#22466f;
+      --bg3:#305f91;
+      --text:#f8fbff;
+      --muted:#d7e2f4;
+      --primary:#b4a7ff;
+      --primary2:#7edcdf;
+      --glass:rgba(255,255,255,0.12);
+      --glassBorder:rgba(255,255,255,0.18);
+      --inputBg:rgba(255,255,255,0.14);
+      --inputBorder:rgba(255,255,255,0.24);
+      --danger:#ff8ea8;
+      --success:#74e0bb;
+      --shadow:0 24px 60px rgba(0,0,0,0.26);
+    }
+
+    *{
+      box-sizing:border-box;
+    }
+
+    html,body{
+      margin:0;
+      width:100%;
+      height:100%;
+      overflow:hidden;
+      font-family:"Inter",sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at 15% 18%, rgba(180,167,255,0.12), transparent 18%),
+        radial-gradient(circle at 86% 84%, rgba(126,220,223,0.10), transparent 20%),
+        linear-gradient(180deg, var(--bg1), var(--bg2) 55%, var(--bg3));
+    }
+
+    body{
+      position:relative;
+    }
+
+    #bgCanvas{
+      position:fixed;
+      inset:0;
+      width:100vw;
+      height:100vh;
+      z-index:0;
+      pointer-events:none;
+    }
+
+    .page{
+      position:relative;
+      z-index:2;
+      width:100%;
+      height:100%;
+      display:grid;
+      grid-template-columns:1.05fr 0.95fr;
+      align-items:center;
+    }
+
+    .left-panel{
+      position:relative;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:flex-start;
+      padding:0 4vw 0 7vw;
+      overflow:hidden;
+    }
+
+    .brand-wrap{
+      position:relative;
+      z-index:5;
+      width:100%;
+      min-height:200px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:flex-start;
+      pointer-events:none;
+      overflow:visible;
+    }
+
+    .brand-title{
+      margin:0;
+      font-family:"Playfair Display", serif;
+      font-size:clamp(3.8rem, 7vw, 6.8rem);
+      line-height:0.95;
+      letter-spacing:0.02em;
+      color:#ffffff;
+      opacity:1;
+      transform:translate(0,0) scale(1);
+      text-shadow:
+        0 0 18px rgba(180,167,255,0.18),
+        0 10px 35px rgba(0,0,0,0.22),
+        0 0 55px rgba(126,220,223,0.10);
+      transition:opacity .95s ease, transform .95s ease, filter .95s ease;
+      filter:none;
+      will-change:transform, opacity, filter;
+    }
+
+    .auth-panel{
+      display:flex;
+      justify-content:flex-end;
+      align-items:center;
+      padding:0 6vw 0 2vw;
+      position:relative;
+      z-index:5;
+    }
+
+    .auth-card{
+      width:min(400px, 92%);
+      max-height:90vh;
+      overflow:auto;
+      padding:30px 28px 28px;
+      border-radius:26px;
+      background:var(--glass);
+      border:1px solid var(--glassBorder);
+      backdrop-filter:blur(14px);
+      -webkit-backdrop-filter:blur(14px);
+      box-shadow:var(--shadow);
+    }
+
+    .tabs{
+      display:flex;
+      gap:28px;
+      align-items:center;
+      margin-bottom:24px;
+    }
+
+    .tab-btn{
+      border:none;
+      background:transparent;
+      padding:0 0 10px;
+      cursor:pointer;
+      font-size:1.05rem;
+      font-weight:800;
+      color:#d1c8ff;
+      border-bottom:3px solid transparent;
+      transition:0.24s ease;
+    }
+
+    .tab-btn.active{
+      color:#ffffff;
+      border-bottom-color:rgba(180,167,255,0.9);
+    }
+
+    .form{
+      display:none;
+    }
+
+    .form.active{
+      display:block;
+    }
+
+    .field-block{
+      margin-bottom:16px;
+    }
+
+    .field-label{
+      display:block;
+      margin-bottom:8px;
+      font-size:0.95rem;
+      font-weight:700;
+      color:#f8fbff;
+    }
+
+    .field{
+      width:100%;
+      height:54px;
+      border:1.5px solid var(--inputBorder);
+      border-radius:14px;
+      background:var(--inputBg);
+      padding:0 16px;
+      font-size:0.98rem;
+      color:#ffffff;
+      outline:none;
+      transition:0.24s ease;
+    }
+
+    .field::placeholder{
+      color:rgba(233,240,255,0.75);
+    }
+
+    .field:focus{
+      border-color:rgba(180,167,255,0.88);
+      background:rgba(255,255,255,0.20);
+      box-shadow:0 0 0 4px rgba(180,167,255,0.08);
+    }
+
+    .submit-btn{
+      width:100%;
+      height:56px;
+      border:none;
+      border-radius:16px;
+      margin-top:12px;
+      cursor:pointer;
+      font-size:1.06rem;
+      font-weight:800;
+      color:#231847;
+      background:linear-gradient(90deg, #b7abff, #82dfe1);
+      box-shadow:0 14px 32px rgba(102,119,222,0.20);
+      transition:0.22s ease;
+    }
+
+    .submit-btn:hover{
+      transform:translateY(-1px);
+      box-shadow:0 18px 38px rgba(102,119,222,0.28);
+    }
+
+    .helper-row{
+      margin-top:14px;
+      display:flex;
+      justify-content:flex-end;
+    }
+
+    .helper-link,
+    .switch-line a{
+      color:#ddd5ff;
+      text-decoration:none;
+      font-weight:700;
+    }
+
+    .helper-link:hover,
+    .switch-line a:hover{
+      text-decoration:underline;
+    }
+
+    .switch-line{
+      margin-top:14px;
+      text-align:center;
+      color:var(--muted);
+      font-size:0.94rem;
+    }
+
+    .msg{
+      min-height:22px;
+      margin:4px 0 10px;
+      font-size:0.9rem;
+      font-weight:700;
+    }
+
+    .msg.error{ color:var(--danger); }
+    .msg.success{ color:var(--success); }
+
+    .dashboard{
+      position:fixed;
+      inset:0;
+      z-index:10;
+      display:none;
+      background:
+        radial-gradient(circle at 14% 14%, rgba(180,167,255,0.12), transparent 18%),
+        radial-gradient(circle at 85% 82%, rgba(126,220,223,0.10), transparent 20%),
+        linear-gradient(180deg, #132b49, #214366 55%, #305f91);
+      padding:34px;
+      color:white;
+    }
+
+    .dashboard.show{
+      display:block;
+    }
+
+    .dash-card{
+      max-width:680px;
+      margin:90px auto 0;
+      background:rgba(255,255,255,0.12);
+      border:1px solid rgba(255,255,255,0.14);
+      border-radius:28px;
+      padding:34px;
+      backdrop-filter:blur(16px);
+      -webkit-backdrop-filter:blur(16px);
+      box-shadow:0 20px 60px rgba(0,0,0,0.28);
+      text-align:center;
+    }
+
+    .dash-title{
+      font-family:"Playfair Display", serif;
+      font-size:clamp(2rem, 5vw, 3.5rem);
+      margin:0 0 14px;
+      color:#ffffff;
+    }
+
+    .dash-sub{
+      color:#d7e2f4;
+      font-size:1.04rem;
+      margin-bottom:24px;
+    }
+
+    .dash-user{
+      color:#d2c8ff;
+      font-weight:800;
+    }
+
+    .logout-btn{
+      height:52px;
+      min-width:170px;
+      border:none;
+      border-radius:14px;
+      cursor:pointer;
+      font-size:1rem;
+      font-weight:800;
+      color:#231847;
+      background:linear-gradient(90deg, #b7abff, #82dfe1);
+      box-shadow:0 12px 28px rgba(102,119,222,0.20);
+    }
+
+    @media (max-width:980px){
+      .page{
+        grid-template-columns:1fr;
+      }
+
+      .left-panel{
+        position:absolute;
+        inset:0;
+        justify-content:center;
+        align-items:flex-start;
+        padding:48px 20px 0;
+      }
+
+      .brand-wrap{
+        align-items:center;
+        text-align:center;
+      }
+
+      .auth-panel{
+        width:100%;
+        justify-content:center;
+        padding:110px 16px 24px;
+      }
+
+      .auth-card{
+        width:min(460px, 96%);
+      }
+    }
+
+    @media (max-width:640px){
+      .auth-card{
+        padding:22px 18px 24px;
+        border-radius:22px;
+      }
+
+      .tabs{
+        justify-content:center;
+        gap:22px;
+      }
+
+      .field{ height:52px; }
+      .submit-btn{ height:54px; }
+      .brand-title{ font-size:clamp(3rem, 12vw, 4.8rem); }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bgCanvas"></canvas>
+
+  <div class="page" id="landingPage">
+    <section class="left-panel">
+      <div class="brand-wrap">
+        <h1 class="brand-title" id="brandTitle">EXAMIFY</h1>
+      </div>
+    </section>
+
+    <section class="auth-panel">
+      <div class="auth-card">
+        <div class="tabs">
+          <button class="tab-btn active" id="loginTab" type="button">Login</button>
+          <button class="tab-btn" id="signupTab" type="button">Sign Up</button>
+        </div>
+
+        <form id="loginForm" class="form active" autocomplete="off">
+          <div id="loginMsg" class="msg"></div>
+
+          <div class="field-block">
+            <label class="field-label" for="loginIdentifier">Username / Email</label>
+            <input class="field" id="loginIdentifier" type="text" placeholder="Enter your username or email">
+          </div>
+
+          <div class="field-block">
+            <label class="field-label" for="loginPassword">Password</label>
+            <input class="field" id="loginPassword" type="password" placeholder="Enter your password">
+          </div>
+
+          <button class="submit-btn" type="submit">Login</button>
+
+          <div class="helper-row">
+            <a class="helper-link" href="#" onclick="return false;">Forgot password?</a>
+          </div>
+
+          <div class="switch-line">
+            Don’t have an account?
+            <a href="#" id="switchToSignup">Sign up</a>
+          </div>
+        </form>
+
+        <form id="signupForm" class="form" autocomplete="off">
+          <div id="signupMsg" class="msg"></div>
+
+          <div class="field-block">
+            <label class="field-label" for="signupName">Full Name</label>
+            <input class="field" id="signupName" type="text" placeholder="Enter your full name">
+          </div>
+
+          <div class="field-block">
+            <label class="field-label" for="signupUsername">Username</label>
+            <input class="field" id="signupUsername" type="text" placeholder="Choose a username">
+          </div>
+
+          <div class="field-block">
+            <label class="field-label" for="signupEmail">Email</label>
+            <input class="field" id="signupEmail" type="email" placeholder="Enter your email">
+          </div>
+
+          <div class="field-block">
+            <label class="field-label" for="signupPassword">Password</label>
+            <input class="field" id="signupPassword" type="password" placeholder="Create a password">
+          </div>
+
+          <div class="field-block">
+            <label class="field-label" for="signupConfirm">Confirm Password</label>
+            <input class="field" id="signupConfirm" type="password" placeholder="Confirm your password">
+          </div>
+
+          <div class="field-block">
+            <label class="field-label" for="signupCollegeId">College ID</label>
+            <input class="field" id="signupCollegeId" type="text" placeholder="Enter your college ID">
+          </div>
+
+          <div class="field-block">
+            <label class="field-label" for="signupDob">Date of Birth</label>
+            <input class="field" id="signupDob" type="date">
+          </div>
+
+          <button class="submit-btn" type="submit">Sign Up</button>
+
+          <div class="switch-line">
+            Already have an account?
+            <a href="#" id="switchToLogin">Login</a>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <div class="dashboard" id="dashboard">
+    <div class="dash-card">
+      <h2 class="dash-title">Welcome to EXAMIFY</h2>
+      <div class="dash-sub">
+        Logged in as <span class="dash-user" id="dashUser"></span>
+      </div>
+      <button class="logout-btn" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+
+  <script>
+    const USERS_KEY = "examify_users_final";
+    const SESSION_KEY = "examify_session_final";
+
+    const loginTab = document.getElementById("loginTab");
+    const signupTab = document.getElementById("signupTab");
+    const loginForm = document.getElementById("loginForm");
+    const signupForm = document.getElementById("signupForm");
+    const loginMsg = document.getElementById("loginMsg");
+    const signupMsg = document.getElementById("signupMsg");
+    const brandTitle = document.getElementById("brandTitle");
+    const dashboard = document.getElementById("dashboard");
+    const landingPage = document.getElementById("landingPage");
+    const dashUser = document.getElementById("dashUser");
+
+    function setMode(mode){
+      const isLogin = mode === "login";
+      loginTab.classList.toggle("active", isLogin);
+      signupTab.classList.toggle("active", !isLogin);
+      loginForm.classList.toggle("active", isLogin);
+      signupForm.classList.toggle("active", !isLogin);
+      loginMsg.textContent = "";
+      signupMsg.textContent = "";
+      loginMsg.className = "msg";
+      signupMsg.className = "msg";
+    }
+
+    loginTab.addEventListener("click", ()=>setMode("login"));
+    signupTab.addEventListener("click", ()=>setMode("signup"));
+
+    document.getElementById("switchToSignup").addEventListener("click", (e)=>{
+      e.preventDefault();
+      setMode("signup");
+    });
+
+    document.getElementById("switchToLogin").addEventListener("click", (e)=>{
+      e.preventDefault();
+      setMode("login");
+    });
+
+    function getUsers(){
+      return JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
+    }
+
+    function saveUsers(users){
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    }
+
+    function setSession(user){
+      localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+    }
+
+    function getSession(){
+      return JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+    }
+
+    function clearSession(){
+      localStorage.removeItem(SESSION_KEY);
+    }
+
+    function validateEmail(email){
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    function showDashboard(user){
+      dashUser.textContent = user.fullName || user.username || user.email;
+      landingPage.style.display = "none";
+      dashboard.classList.add("show");
+    }
+
+    function showLanding(){
+      dashboard.classList.remove("show");
+      landingPage.style.display = "grid";
+    }
+
+    signupForm.addEventListener("submit", (e)=>{
+      e.preventDefault();
+      signupMsg.textContent = "";
+      signupMsg.className = "msg";
+
+      const fullName = document.getElementById("signupName").value.trim();
+      const username = document.getElementById("signupUsername").value.trim();
+      const email = document.getElementById("signupEmail").value.trim().toLowerCase();
+      const password = document.getElementById("signupPassword").value;
+      const confirm = document.getElementById("signupConfirm").value;
+      const collegeId = document.getElementById("signupCollegeId").value.trim();
+      const dob = document.getElementById("signupDob").value;
+
+      if(!fullName || !username || !email || !password || !confirm || !collegeId || !dob){
+        signupMsg.textContent = "Please fill all fields.";
+        signupMsg.className = "msg error";
+        return;
+      }
+
+      if(!validateEmail(email)){
+        signupMsg.textContent = "Enter a valid email address.";
+        signupMsg.className = "msg error";
+        return;
+      }
+
+      if(password.length < 6){
+        signupMsg.textContent = "Password must be at least 6 characters.";
+        signupMsg.className = "msg error";
+        return;
+      }
+
+      if(password !== confirm){
+        signupMsg.textContent = "Passwords do not match.";
+        signupMsg.className = "msg error";
+        return;
+      }
+
+      const users = getUsers();
+
+      if(users.some(u => u.email === email)){
+        signupMsg.textContent = "Email already exists.";
+        signupMsg.className = "msg error";
+        return;
+      }
+
+      if(users.some(u => u.username.toLowerCase() === username.toLowerCase())){
+        signupMsg.textContent = "Username already exists.";
+        signupMsg.className = "msg error";
+        return;
+      }
+
+      if(users.some(u => u.collegeId.toLowerCase() === collegeId.toLowerCase())){
+        signupMsg.textContent = "College ID already exists.";
+        signupMsg.className = "msg error";
+        return;
+      }
+
+      const user = { fullName, username, email, password, collegeId, dob };
+      users.push(user);
+      saveUsers(users);
+
+      signupMsg.textContent = "Signup successful. You can login now.";
+      signupMsg.className = "msg success";
+      signupForm.reset();
+      setTimeout(()=>setMode("login"), 900);
+    });
+
+    loginForm.addEventListener("submit", (e)=>{
+      e.preventDefault();
+      loginMsg.textContent = "";
+      loginMsg.className = "msg";
+
+      const identifier = document.getElementById("loginIdentifier").value.trim().toLowerCase();
+      const password = document.getElementById("loginPassword").value;
+
+      if(!identifier || !password){
+        loginMsg.textContent = "Enter username/email and password.";
+        loginMsg.className = "msg error";
+        return;
+      }
+
+      const users = getUsers();
+      const user = users.find(
+        u =>
+          (u.email.toLowerCase() === identifier || u.username.toLowerCase() === identifier) &&
+          u.password === password
+      );
+
+      if(!user){
+        loginMsg.textContent = "Invalid login credentials.";
+        loginMsg.className = "msg error";
+        return;
+      }
+
+      setSession(user);
+      loginMsg.textContent = `Welcome back, ${user.fullName}!`;
+      loginMsg.className = "msg success";
+
+      setTimeout(()=>showDashboard(user), 500);
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", ()=>{
+      clearSession();
+      showLanding();
+      setMode("login");
+    });
+
+    const existingSession = getSession();
+    if(existingSession){
+      showDashboard(existingSession);
+    }
+
+    const canvas = document.getElementById("bgCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let W = 0;
+    let H = 0;
+    let particles = [];
+    let titleLoopStarted = false;
+
+    const palette = [
+      "rgba(184, 174, 255, 0.82)",
+      "rgba(125, 219, 224, 0.78)",
+      "rgba(245, 191, 221, 0.75)",
+      "rgba(223, 219, 255, 0.80)",
+      "rgba(247, 250, 255, 0.90)"
+    ];
+
+    const shapeTypes = ["dot","circle","square","rect","triangle"];
+
+    function rand(min,max){
+      return Math.random() * (max - min) + min;
+    }
+
+    function totalParticles(){
+      const area = window.innerWidth * window.innerHeight;
+      return Math.min(2200, Math.max(1200, Math.floor(area / 700)));
+    }
+
+    function resizeCanvas(){
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+      buildParticles();
+    }
+
+    function buildParticles(){
+      particles = [];
+      const count = totalParticles();
+
+      for(let i=0;i<count;i++){
+        const type = shapeTypes[Math.floor(Math.random() * shapeTypes.length)];
+        particles.push({
+          x: rand(0, W),
+          y: rand(0, H),
+          vx: rand(-0.28, 0.28),
+          vy: rand(-0.28, 0.28),
+          drift: rand(0.0004, 0.0018),
+          size:
+            type === "dot" ? rand(2.0, 3.2) :
+            type === "rect" ? rand(2.8, 4.8) :
+            rand(2.2, 5.0),
+          type,
+          color: palette[Math.floor(Math.random() * palette.length)]
+        });
+      }
+    }
+
+    function drawParticle(p){
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+
+      if(p.type === "dot" || p.type === "circle"){
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      } else if(p.type === "square"){
+        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+      } else if(p.type === "rect"){
+        ctx.fillRect(p.x - p.size, p.y - p.size / 2.7, p.size * 1.8, p.size * 0.8);
+      } else {
+        ctx.moveTo(p.x, p.y - p.size);
+        ctx.lineTo(p.x - p.size * 0.85, p.y + p.size * 0.65);
+        ctx.lineTo(p.x + p.size * 0.85, p.y + p.size * 0.65);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    function updateParticles(){
+      for(let i=0;i<particles.length;i++){
+        const p = particles[i];
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        p.vx += Math.sin((p.y + i) * 0.002) * p.drift;
+        p.vy += Math.cos((p.x + i) * 0.002) * p.drift;
+
+        const maxSpeed = 0.38;
+        p.vx = Math.max(-maxSpeed, Math.min(maxSpeed, p.vx));
+        p.vy = Math.max(-maxSpeed, Math.min(maxSpeed, p.vy));
+
+        if(p.x < -40) p.x = W + 40;
+        if(p.x > W + 40) p.x = -40;
+        if(p.y < -40) p.y = H + 40;
+        if(p.y > H + 40) p.y = -40;
+      }
+    }
+
+    function wait(ms){
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function showFromPosition(startX, startY, holdTime = 2200){
+      const title = brandTitle;
+
+      title.style.transition = "none";
+      title.style.opacity = "0";
+      title.style.transform = `translate(${startX}px, ${startY}px) scale(0.92)`;
+      title.style.filter = "blur(12px)";
+      void title.offsetWidth;
+
+      title.style.transition = "opacity .95s ease, transform .95s ease, filter .95s ease";
+      title.style.opacity = "1";
+      title.style.transform = "translate(0, 0) scale(1)";
+      title.style.filter = "blur(0)";
+      await wait(holdTime);
+    }
+
+    async function disappearForOneSecond(){
+      const title = brandTitle;
+      title.style.transition = "opacity .75s ease, transform .75s ease, filter .75s ease";
+      title.style.opacity = "0";
+      title.style.transform = "translate(0, 0) scale(0.88)";
+      title.style.filter = "blur(10px)";
+      await wait(1000);
+    }
+
+    async function runTitleLoop(){
+      while(true){
+        await showFromPosition(0, 0, 2200);
+        await disappearForOneSecond();
+
+        await showFromPosition(-650, 0, 2200);
+        await disappearForOneSecond();
+
+        await showFromPosition(-420, -260, 2200);
+        await disappearForOneSecond();
+
+        await showFromPosition(-420, 280, 2200);
+        await disappearForOneSecond();
+
+        await showFromPosition(650, 0, 2200);
+        await disappearForOneSecond();
+      }
+    }
+
+    function animate(){
+      ctx.clearRect(0, 0, W, H);
+      updateParticles();
+
+      for(const p of particles){
+        drawParticle(p);
+      }
+
+      if(!titleLoopStarted){
+        titleLoopStarted = true;
+        runTitleLoop();
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+    animate();
+  </script>
+</body>
+</html>
