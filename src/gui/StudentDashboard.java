@@ -3,12 +3,16 @@ package gui;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.util.List;
+import model.Quiz;
+import model.User;
+import dao.QuizDAO;
 
 public class StudentDashboard extends JFrame {
 
-    private final LoginFrame.User user;
+    private final User user;
 
-    public StudentDashboard(LoginFrame.User user) {
+    public StudentDashboard(User user) {
         this.user = user;
 
         setTitle("EXAMIFY - Student Dashboard");
@@ -29,7 +33,7 @@ public class StudentDashboard extends JFrame {
         title.setForeground(Color.WHITE);
         title.setFont(new Font("Serif", Font.BOLD, 38));
 
-        JLabel subtitle = new JLabel("Logged in as " + user.fullName);
+        JLabel subtitle = new JLabel("Logged in as " + user.getUsername());
         subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
         subtitle.setForeground(new Color(215, 226, 244));
         subtitle.setFont(new Font("SansSerif", Font.PLAIN, 18));
@@ -45,8 +49,22 @@ public class StudentDashboard extends JFrame {
         JButton startQuizBtn = createPrimaryButton("Start Quiz");
         startQuizBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
         startQuizBtn.addActionListener(e -> {
-            dispose();
-            new QuizFrame(user).setVisible(true);
+            QuizDAO quizDAO = new QuizDAO();
+            List<Quiz> quizzes = quizDAO.getAllActiveQuizzes();
+            if (quizzes.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No quizzes available at the moment.");
+                return;
+            }
+            String[] quizTitles = quizzes.stream().map(Quiz::getTitle).toArray(String[]::new);
+            String selected = (String) JOptionPane.showInputDialog(this, "Select a Quiz to take:", "Available Quizzes",
+                    JOptionPane.QUESTION_MESSAGE, null, quizTitles, quizTitles[0]);
+            if (selected != null) {
+                Quiz selectedQuiz = quizzes.stream().filter(q -> q.getTitle().equals(selected)).findFirst().orElse(null);
+                if (selectedQuiz != null) {
+                    dispose();
+                    new QuizFrame(user, selectedQuiz).setVisible(true);
+                }
+            }
         });
 
         JButton logoutBtn = createSecondaryButton("Logout");

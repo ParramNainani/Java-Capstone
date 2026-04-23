@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.Random;
 import javax.swing.*;
 import javax.swing.border.*;
+import dao.UserDAO;
+import model.User;
 
 public class RegisterFrame extends JFrame {
     // Color constants (match LoginFrame)
@@ -23,8 +25,7 @@ public class RegisterFrame extends JFrame {
     private JPasswordField passwordField;
     private JButton saveBtn, proceedBtn, backBtn;
     private JLabel errorLabel;
-    private static final HashMap<String, LoginFrame.User> dummyStore = new HashMap<>();
-    private LoginFrame.User registeredStudent = null;
+    private User registeredStudent = null;
 
     public RegisterFrame() {
         setTitle("EXAMIFY – Student Registration");
@@ -209,19 +210,17 @@ public class RegisterFrame extends JFrame {
             return;
         }
         // Check for duplicate email or student ID
-        if (dummyStore.containsKey(email)) {
+        UserDAO dao = new UserDAO();
+        User existing = dao.getUserByUsername(email); // Since we use email as username in this simple app
+        if (existing != null) {
             errorLabel.setText("This email is already registered.");
             return;
         }
-        for (LoginFrame.User s : dummyStore.values()) {
-            if (s.collegeId.equalsIgnoreCase(studentId)) {
-                errorLabel.setText("This student ID is already registered.");
-                return;
-            }
-        }
+
         // Save student
-        registeredStudent = new LoginFrame.User(name, name, email, password, studentId, dob);
-        dummyStore.put(email, registeredStudent);
+        registeredStudent = new User(email, password, email);
+        registeredStudent.setRole("Student");
+        dao.insertUser(registeredStudent);
         JOptionPane.showMessageDialog(this, "Registration successful! You may now proceed.", "Success", JOptionPane.INFORMATION_MESSAGE);
         proceedBtn.setEnabled(true);
         saveBtn.setEnabled(false);

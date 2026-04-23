@@ -139,4 +139,18 @@ public class QuizDAO {
         // implies a secondary query or JOIN with QuestionDAO not handled in this core method.
         return quiz;
     }
+
+    public int getTotalQuizzesCount() {
+        String sql = "SELECT COUNT(*) FROM quizzes";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error retrieving total quizzes count: " + e.getMessage());
+        }
+        return 0;
+    }
 }

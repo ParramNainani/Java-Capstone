@@ -4,13 +4,15 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
+import model.User;
+
 public class ResultFrame extends JFrame {
 
-    private final LoginFrame.User user;
+    private final User user;
     private final int score;
     private final int total;
 
-    public ResultFrame(LoginFrame.User user, int score, int total) {
+    public ResultFrame(User user, int score, int total) {
         this.user = user;
         this.score = score;
         this.total = total;
@@ -33,7 +35,7 @@ public class ResultFrame extends JFrame {
         title.setForeground(Color.WHITE);
         title.setFont(new Font("Serif", Font.BOLD, 38));
 
-        JLabel userLabel = new JLabel("Student: " + user.fullName);
+        JLabel userLabel = new JLabel("Student: " + user.getUsername());
         userLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         userLabel.setForeground(new Color(215, 226, 244));
         userLabel.setFont(new Font("SansSerif", Font.PLAIN, 18));

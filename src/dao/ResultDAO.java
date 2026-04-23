@@ -8,6 +8,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import model.Result;
+import model.ResultDetail;
 
 /**
  * ResultDAO - Data Access Object for Result operations.
@@ -101,5 +102,83 @@ public class ResultDAO {
         result.setScore(rs.getInt("score"));
         result.setTotalMarks(rs.getInt("total_marks"));
         return result;
+    }
+
+    public int getUniqueStudentCount() {
+        String sql = "SELECT COUNT(DISTINCT user_id) FROM results";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error retrieving unique student count: " + e.getMessage());
+        }
+        return 0;
+    }
+
+    public List<ResultDetail> getRecentResults(int limit) {
+        String sql = "SELECT r.result_id, u.username, q.title, r.score, r.total_marks " +
+                     "FROM results r " +
+                     "JOIN users u ON r.user_id = u.user_id " +
+                     "JOIN quizzes q ON r.quiz_id = q.quiz_id " +
+                     "ORDER BY r.result_id DESC LIMIT ?";
+        List<ResultDetail> details = new ArrayList<>();
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, limit);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    details.add(new ResultDetail(
+                        rs.getInt("result_id"),
+                        rs.getString("username"),
+                        rs.getString("title"),
+                        rs.getInt("score"),
+                        rs.getInt("total_marks")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error retrieving recent results: " + e.getMessage());
+        }
+        return details;
+    }
+
+    /**
+     * Returns [excellent, good, average] counts.
+     * Excellent >= 80%, Good 50-79%, Average < 50%
+     */
+    public int[] getPerformanceBreakdown() {
+        int[] counts = {0, 0, 0};
+        String sql = "SELECT score, total_marks FROM results";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                int score = rs.getInt("score");
+                int total = rs.getInt("total_marks");
+                if (total == 0) continue;
+                double pct = (score * 100.0) / total;
+                if (pct >= 80) counts[0]++;
+                else if (pct >= 50) counts[1]++;
+                else counts[2]++;
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting performance breakdown: " + e.getMessage());
+        }
+        return counts;
+    }
+
+    public int getCompletedQuizzesCount() {
+        String sql = "SELECT COUNT(DISTINCT quiz_id) FROM results";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) return rs.getInt(1);
+        } catch (SQLException e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+        return 0;
     }
 }

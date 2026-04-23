@@ -1,6 +1,9 @@
 package model;
 
-public abstract class Question<T> {
+import java.io.Serializable;
+
+public abstract class Question<T> implements Serializable {
+    private static final long serialVersionUID = 1L;
     private int questionId;
     private String questionText;
     private T correctAnswer;

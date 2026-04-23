@@ -47,4 +47,8 @@ public class Result {
 
     public int getTotalMarks() { return totalMarks; }
     public void setTotalMarks(int totalMarks) { this.totalMarks = totalMarks; }
+
+    public double getPercentage() {
+        return totalMarks == 0 ? 0 : ((double) score / totalMarks) * 100;
+    }
 }

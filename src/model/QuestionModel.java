@@ -1,12 +1,14 @@
 package model;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
  * Represents Question data for DB and UI.
  * Separate from core logic Question<T>
  */
-public class QuestionModel {
+public class QuestionModel implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     private int id;
     private String questionText;

@@ -1,7 +1,7 @@
 package gui;
 
 import dao.QuestionDAO;
-import model.QuestionModel;
+import model.Question;
 
 import javax.swing.*;
 import java.awt.*;
@@ -46,15 +46,32 @@ public class QuestionPanel extends JPanel {
     }
 
     private void addQuestion() {
-        QuestionModel q = new QuestionModel();
+        String questionText = questionField.getText().trim();
+        String answer = answerField.getText().trim();
+        String category = categoryField.getText().trim();
 
-        q.setQuestionText(questionField.getText());
-        q.setOptions(Arrays.asList(optionsField.getText().split(",")));
-        q.setCorrectAnswer(answerField.getText());
-        q.setCategory(categoryField.getText());
+        if (questionText.isEmpty() || answer.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Question and Answer cannot be empty.");
+            return;
+        }
+
+        Question<String> q = new Question<String>(0, questionText, answer) {
+            @Override
+            public boolean checkAnswer(String ans) {
+                return this.getCorrectAnswer().equalsIgnoreCase(ans);
+            }
+        };
+        q.setQuestionType("MCQ");
+        q.setMarks(1);
+        q.setDifficultyLevel(category);
 
         QuestionDAO dao = new QuestionDAO();
-        dao.addQuestion(q);
+        dao.insertQuestion(q);
+
+        questionField.setText("");
+        optionsField.setText("");
+        answerField.setText("");
+        categoryField.setText("");
 
         JOptionPane.showMessageDialog(this, "Question Added!");
     }

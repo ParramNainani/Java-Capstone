@@ -12,6 +12,8 @@ import java.io.*;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import dao.UserDAO;
+import model.User;
 
 public class LoginFrame extends JFrame {
     private final CardLayout leftCardLayout = new CardLayout();
@@ -36,10 +38,7 @@ public class LoginFrame extends JFrame {
     private JTextField signupCollegeIdField;
     private JTextField signupDobField;
     
-    private static final String USERS_FILE = System.getProperty("user.home") + File.separator + ".examify_users.dat";
-    private final List<User> users = loadUsers();
-    
-    private String selectedRole = "Student"; 
+    private String selectedRole = "Student";
 
     public LoginFrame() {
         setTitle("EXAMIFY - Login");
@@ -460,23 +459,25 @@ public class LoginFrame extends JFrame {
             setError(signupMsg, "Passwords do not match.");
             return;
         }
-        for (User u : users) {
-            if (u.email.equalsIgnoreCase(email)) {
-                setError(signupMsg, "Email already exists.");
-                return;
-            }
-            if (u.username.equalsIgnoreCase(username)) {
-                setError(signupMsg, "Username already exists.");
-                return;
-            }
+        UserDAO dao = new UserDAO();
+        User existingUsername = dao.getUserByUsername(username);
+        if (existingUsername != null) {
+            setError(signupMsg, "Username already exists.");
+            return;
         }
 
-        users.add(new User(fullName, username, email, password, collegeId, dob));
-        saveUsers();
-        setSuccess(signupMsg, "Signup successful. You can login now.");
-        Timer timer = new Timer(900, evt -> setMode("login"));
-        timer.setRepeats(false);
-        timer.start();
+        User newUser = new User(username, password, email);
+        newUser.setRole(selectedRole); // Use the role selected on the landing screen
+
+        boolean success = dao.insertUser(newUser);
+        if (success) {
+            setSuccess(signupMsg, "Signup successful. You can login now.");
+            Timer timer = new Timer(900, evt -> setMode("login"));
+            timer.setRepeats(false);
+            timer.start();
+        } else {
+            setError(signupMsg, "Database error during signup.");
+        }
     }
 
     private void handleLogin(ActionEvent e) {
@@ -488,27 +489,21 @@ public class LoginFrame extends JFrame {
             return;
         }
 
-        User found = null;
-        for (User u : users) {
-            if ((u.email.equalsIgnoreCase(identifier) || u.username.equalsIgnoreCase(identifier))
-                    && u.password.equals(password)) {
-                found = u;
-                break;
-            }
-        }
-
-        if (found == null) {
+        UserDAO dao = new UserDAO();
+        User found = dao.getUserByUsername(identifier);
+        
+        if (found == null || !found.getPassword().equals(password)) {
             setError(loginMsg, "Invalid login credentials.");
             return;
         }
 
-        setSuccess(loginMsg, "Welcome back, " + found.fullName + "!");
+        setSuccess(loginMsg, "Welcome back, " + found.getUsername() + "!");
 
         User finalFound = found;
         Timer timer = new Timer(500, evt -> {
             dispose();
             if (selectedRole.equals("Teacher")) {
-                new AdminDashboard().setVisible(true);
+                new TeacherDashboard(finalFound).setVisible(true);
             } else {
                 new StudentDashboard(finalFound).setVisible(true);
             }
@@ -527,46 +522,7 @@ public class LoginFrame extends JFrame {
         label.setText(text);
     }
 
-    // ── Persistence ────────────────────────────────────────────────────────────
-    @SuppressWarnings("unchecked")
-    private static List<User> loadUsers() {
-        File file = new File(USERS_FILE);
-        if (!file.exists()) return new ArrayList<>();
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
-            return (List<User>) ois.readObject();
-        } catch (Exception e) {
-            System.err.println("Could not load users: " + e.getMessage());
-            return new ArrayList<>();
-        }
-    }
-
-    private void saveUsers() {
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(USERS_FILE))) {
-            oos.writeObject(users);
-        } catch (IOException e) {
-            System.err.println("Could not save users: " + e.getMessage());
-        }
-    }
-
-    // ── User model ─────────────────────────────────────────────────────────────
-    public static class User implements Serializable {
-        private static final long serialVersionUID = 1L;
-        public String fullName;
-        public String username;
-        public String email;
-        public String password;
-        public String collegeId;
-        public String dob;
-
-        public User(String fullName, String username, String email, String password, String collegeId, String dob) {
-            this.fullName = fullName;
-            this.username = username;
-            this.email = email;
-            this.password = password;
-            this.collegeId = collegeId;
-            this.dob = dob;
-        }
-    }
+    // Removed Local File Storage Persistence logic and User class
 
     static class AnimatedBackground extends JPanel {
         private final List<Blob> blobs = new ArrayList<>();
@@ -688,5 +644,13 @@ public class LoginFrame extends JFrame {
             super.paintComponent(g);
             g2.dispose();
         }
+    }
+
+    public static void main(String[] args) {
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception ignored) {}
+        
+        SwingUtilities.invokeLater(() -> new LoginFrame().setVisible(true));
     }
 }

@@ -5,11 +5,18 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import model.Quiz;
+import model.User;
+import model.Result;
+import model.Question;
+import dao.QuestionDAO;
+import dao.ResultDAO;
 
 public class QuizFrame extends JFrame {
 
-    private final LoginFrame.User user;
-    private final List<Question> questions = new ArrayList<>();
+    private final User user;
+    private final Quiz quiz;
+    private final List<QuestionWrapper> questions = new ArrayList<>();
     private final ButtonGroup optionsGroup = new ButtonGroup();
 
     private int currentIndex = 0;
@@ -26,15 +33,18 @@ public class QuizFrame extends JFrame {
     private int timeLeft = 60;
     private Timer quizTimer;
 
-    public QuizFrame(LoginFrame.User user) {
+    public QuizFrame(User user, Quiz quiz) {
         this.user = user;
+        this.quiz = quiz;
+        this.timeLeft = quiz.getTimeLimit();
 
         setTitle("EXAMIFY - Quiz");
         setSize(1200, 720);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        addSampleQuestions();
+        quizTitle.setText(quiz.getTitle());
+        loadQuizQuestions();
 
         JPanel root = new QuizBackgroundPanel();
         root.setLayout(new GridBagLayout());
@@ -114,19 +124,47 @@ public class QuizFrame extends JFrame {
         startTimer();
     }
 
-    private void addSampleQuestions() {
-        questions.add(new Question("Which keyword is used to inherit a class in Java?",
-                new String[]{"implements", "extends", "inherits", "super"}, 1));
-        questions.add(new Question("Which package contains Swing classes?",
-                new String[]{"java.awt", "javax.swing", "java.io", "java.sql"}, 1));
-        questions.add(new Question("Which method is the entry point of a Java program?",
-                new String[]{"start()", "run()", "main()", "init()"}, 2));
-        questions.add(new Question("Which layout arranges components like cards?",
-                new String[]{"GridLayout", "FlowLayout", "BorderLayout", "CardLayout"}, 3));
+    private void loadQuizQuestions() {
+        QuestionDAO qDao = new QuestionDAO();
+        List<Question<?>> dbQuestions = qDao.getQuestionsByQuizId(quiz.getNumericQuizId());
+        
+        for (Question<?> q : dbQuestions) {
+            String qType = q.getQuestionType() != null ? q.getQuestionType() : "MCQ";
+            String[] optionsArray;
+            int correctIndex = 0;
+            String correctText = q.getCorrectAnswer() != null ? q.getCorrectAnswer().toString() : "";
+
+            if ("TRUE_FALSE".equals(qType)) {
+                optionsArray = new String[]{"True", "False", "", ""};
+                correctIndex = "False".equalsIgnoreCase(correctText) ? 1 : 0;
+            } else if ("SHORT_ANSWER".equals(qType)) {
+                optionsArray = new String[]{"(Type your answer)", "", "", ""};
+                correctIndex = -99; // special marker
+            } else { // MCQ
+                optionsArray = new String[]{"Option A", "Option B", "Option C", "Option D"};
+                if (q instanceof model.MCQQuestion) {
+                    model.MCQQuestion mcq = (model.MCQQuestion) q;
+                    java.util.Map<String, String> opts = mcq.getOptions();
+                    if (opts != null && !opts.isEmpty()) {
+                        optionsArray[0] = opts.getOrDefault("A", "Option A");
+                        optionsArray[1] = opts.getOrDefault("B", "Option B");
+                        optionsArray[2] = opts.getOrDefault("C", "Option C");
+                        optionsArray[3] = opts.getOrDefault("D", "Option D");
+                        for (int i = 0; i < 4; i++) {
+                            if (optionsArray[i].equalsIgnoreCase(correctText)) { correctIndex = i; break; }
+                        }
+                    }
+                }
+            }
+            QuestionWrapper w = new QuestionWrapper(q.getQuestionText(), optionsArray, correctIndex);
+            w.questionType = qType;
+            w.correctAnswerText = correctText;
+            questions.add(w);
+        }
     }
 
     private void loadQuestion() {
-        Question q = questions.get(currentIndex);
+        QuestionWrapper q = questions.get(currentIndex);
         questionCountLabel.setText("Question " + (currentIndex + 1) + " of " + questions.size());
         questionArea.setText(q.question);
         option1.setText(q.options[0]);
@@ -143,7 +181,7 @@ public class QuizFrame extends JFrame {
     }
 
     private void saveCurrentSelection() {
-        Question q = questions.get(currentIndex);
+        QuestionWrapper q = questions.get(currentIndex);
         if (option1.isSelected()) q.userAnswer = 0;
         else if (option2.isSelected()) q.userAnswer = 1;
         else if (option3.isSelected()) q.userAnswer = 2;
@@ -175,14 +213,33 @@ public class QuizFrame extends JFrame {
         }
 
         score = 0;
-        for (Question q : questions) {
-            if (q.userAnswer == q.correctIndex) {
-                score++;
+        for (QuestionWrapper q : questions) {
+            if ("SHORT_ANSWER".equals(q.questionType)) {
+                if (q.userTextAnswer != null && q.correctAnswerText != null &&
+                    q.userTextAnswer.trim().toLowerCase().contains(q.correctAnswerText.trim().toLowerCase())) {
+                    score++;
+                }
+            } else {
+                if (q.userAnswer == q.correctIndex) {
+                    score++;
+                }
             }
         }
 
+        // Save result to database
+        Result result = new Result();
+        result.setUserId(user.getUserId());
+        result.setNumericQuizId(quiz.getNumericQuizId());
+        result.setScore(score);
+        result.setTotalMarks(questions.size());
+        
+        ResultDAO resultDAO = new ResultDAO();
+        resultDAO.insertResult(result);
+
         dispose();
-        new ResultFrame(user, score, questions.size()).setVisible(true);
+        // ResultFrame not provided in snippet but should work if present
+        // new ResultFrame(user, score, questions.size()).setVisible(true);
+        JOptionPane.showMessageDialog(null, "Quiz submitted! Score: " + score + " / " + questions.size());
     }
 
     private void startTimer() {
@@ -227,13 +284,16 @@ public class QuizFrame extends JFrame {
         return button;
     }
 
-    static class Question {
+    static class QuestionWrapper {
         String question;
         String[] options;
         int correctIndex;
         int userAnswer = -1;
+        String questionType = "MCQ";
+        String correctAnswerText = "";
+        String userTextAnswer = "";
 
-        Question(String question, String[] options, int correctIndex) {
+        QuestionWrapper(String question, String[] options, int correctIndex) {
             this.question = question;
             this.options = options;
             this.correctIndex = correctIndex;
