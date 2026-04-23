@@ -8,8 +8,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +36,8 @@ public class LoginFrame extends JFrame {
     private JTextField signupCollegeIdField;
     private JTextField signupDobField;
     
-    private final List<User> users = new ArrayList<>();
+    private static final String USERS_FILE = System.getProperty("user.home") + File.separator + ".examify_users.dat";
+    private final List<User> users = loadUsers();
     
     private String selectedRole = "Student"; 
 
@@ -160,7 +160,7 @@ public class LoginFrame extends JFrame {
         
         JPanel authBox = new JPanel(new BorderLayout());
         authBox.setOpaque(false);
-        authBox.setPreferredSize(new Dimension(400, 560));
+        authBox.setPreferredSize(new Dimension(400, 630));
         
         JPanel tabs = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 0));
         tabs.setOpaque(false);
@@ -316,6 +316,10 @@ public class LoginFrame extends JFrame {
         comp.setForeground(Color.WHITE);
         comp.setFont(new Font("SansSerif", Font.PLAIN, 15));
         comp.setOpaque(true);
+        // Make caret visible (white) when user starts typing
+        if (comp instanceof JTextField) {
+            ((JTextField) comp).setCaretColor(Color.WHITE);
+        }
     }
 
     private JButton createLinkButton(String text) {
@@ -468,6 +472,7 @@ public class LoginFrame extends JFrame {
         }
 
         users.add(new User(fullName, username, email, password, collegeId, dob));
+        saveUsers();
         setSuccess(signupMsg, "Signup successful. You can login now.");
         Timer timer = new Timer(900, evt -> setMode("login"));
         timer.setRepeats(false);
@@ -522,7 +527,30 @@ public class LoginFrame extends JFrame {
         label.setText(text);
     }
 
-    public static class User {
+    // ── Persistence ────────────────────────────────────────────────────────────
+    @SuppressWarnings("unchecked")
+    private static List<User> loadUsers() {
+        File file = new File(USERS_FILE);
+        if (!file.exists()) return new ArrayList<>();
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+            return (List<User>) ois.readObject();
+        } catch (Exception e) {
+            System.err.println("Could not load users: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    private void saveUsers() {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(USERS_FILE))) {
+            oos.writeObject(users);
+        } catch (IOException e) {
+            System.err.println("Could not save users: " + e.getMessage());
+        }
+    }
+
+    // ── User model ─────────────────────────────────────────────────────────────
+    public static class User implements Serializable {
+        private static final long serialVersionUID = 1L;
         public String fullName;
         public String username;
         public String email;
