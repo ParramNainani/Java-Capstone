@@ -10,6 +10,7 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -372,11 +373,27 @@ public class LoginFrame extends JFrame {
         panel.setOpaque(false);
         
         try {
-            File imgFile = new File("gui/illustration.png");
-            if (!imgFile.exists()) {
-                imgFile = new File("src/gui/illustration.png");
+            // Try multiple paths to find the image regardless of working directory
+            String[] candidatePaths = {
+                "gui/illustration.png",
+                "src/gui/illustration.png",
+                "illustration.png",
+                "/Users/niyatijha/Desktop/Java-Capstone/src/gui/illustration.png"
+            };
+            // Also try relative to the class file location
+            File classFile = new File(LoginFrame.class.getProtectionDomain()
+                    .getCodeSource().getLocation().toURI());
+            File classDir = classFile.isDirectory() ? classFile : classFile.getParentFile();
+            candidatePaths = java.util.Arrays.copyOf(candidatePaths, candidatePaths.length + 2);
+            candidatePaths[candidatePaths.length - 2] = new File(classDir, "illustration.png").getAbsolutePath();
+            candidatePaths[candidatePaths.length - 1] = new File(classDir, "gui/illustration.png").getAbsolutePath();
+
+            File imgFile = null;
+            for (String path : candidatePaths) {
+                File f = new File(path);
+                if (f.exists()) { imgFile = f; break; }
             }
-            if(imgFile.exists()) {
+            if(imgFile != null) {
                 BufferedImage originalImg = ImageIO.read(imgFile);
                 BufferedImage transparentImg = makeTransparentBackground(originalImg);
                 
@@ -407,7 +424,7 @@ public class LoginFrame extends JFrame {
                 placeholder.setForeground(Color.WHITE);
                 panel.add(placeholder, BorderLayout.CENTER);
             }
-        } catch (IOException e) {
+        } catch (IOException | URISyntaxException e) {
             e.printStackTrace();
         }
         return panel;
