@@ -10,6 +10,9 @@ public class Quiz {
     private String title;
     private List<Question<?>> questions;
     private int timeLimit;
+    private int numericQuizId;
+    private int creatorId;
+    private boolean active;
 
     public Quiz() {}
 
@@ -31,4 +34,13 @@ public class Quiz {
 
     public int getTimeLimit() { return timeLimit; }
     public void setTimeLimit(int timeLimit) { this.timeLimit = timeLimit; }
+
+    public int getNumericQuizId() { return numericQuizId; }
+    public void setNumericQuizId(int numericQuizId) { this.numericQuizId = numericQuizId; }
+
+    public int getCreatorId() { return creatorId; }
+    public void setCreatorId(int creatorId) { this.creatorId = creatorId; }
+
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
 }

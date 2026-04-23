@@ -10,6 +10,9 @@ public class Certificate {
     private String studentId;
     private String quizName;
     private LocalDate issueDate;
+    private int numericCertificateId;
+    private int resultId;
+    private String certificateHash;
 
     public Certificate() {}
 
@@ -31,4 +34,12 @@ public class Certificate {
 
     public LocalDate getIssueDate() { return issueDate; }
     public void setIssueDate(LocalDate issueDate) { this.issueDate = issueDate; }
+    public int getNumericCertificateId() { return numericCertificateId; }
+    public void setNumericCertificateId(int numericCertificateId) { this.numericCertificateId = numericCertificateId; }
+
+    public int getResultId() { return resultId; }
+    public void setResultId(int resultId) { this.resultId = resultId; }
+
+    public String getCertificateHash() { return certificateHash; }
+    public void setCertificateHash(String certificateHash) { this.certificateHash = certificateHash; }
 }

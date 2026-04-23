@@ -8,6 +8,10 @@ public class Response {
     private int questionId;
     private String chosenAnswer;
     private boolean isCorrect;
+    private int responseId;
+    private int resultId;
+    private Integer selectedOptionId;
+    private String shortAnswerText;
 
     public Response() {}
 
@@ -29,4 +33,15 @@ public class Response {
 
     public boolean isCorrect() { return isCorrect; }
     public void setCorrect(boolean isCorrect) { this.isCorrect = isCorrect; }
+    public int getResponseId() { return responseId; }
+    public void setResponseId(int responseId) { this.responseId = responseId; }
+
+    public int getResultId() { return resultId; }
+    public void setResultId(int resultId) { this.resultId = resultId; }
+
+    public Integer getSelectedOptionId() { return selectedOptionId; }
+    public void setSelectedOptionId(Integer selectedOptionId) { this.selectedOptionId = selectedOptionId; }
+
+    public String getShortAnswerText() { return shortAnswerText; }
+    public void setShortAnswerText(String shortAnswerText) { this.shortAnswerText = shortAnswerText; }
 }
