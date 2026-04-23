@@ -7,6 +7,8 @@ public class User {
     protected String username;
     protected String password;
     protected String email;
+    private int userId;
+    private String role;
 
     public User() {}
 
@@ -24,4 +26,10 @@ public class User {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public int getUserId() { return userId; }
+    public void setUserId(int userId) { this.userId = userId; }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
 }
