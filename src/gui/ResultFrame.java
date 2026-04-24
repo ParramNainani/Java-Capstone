@@ -8,9 +8,14 @@ import java.awt.geom.*;
 
 public class ResultFrame extends JFrame {
 
-    private final LoginFrame.User user;
+    private final model.User user;
     private final int latestScore;
     private final int latestTotal;
+
+    private int totalQuizzesAvailable;
+    private int completedQuizzesCount;
+    private int scoresOver90Count;
+    private java.util.List<model.ResultDetail> quizHistory;
 
     // ── Brand colours (mirrors LoginFrame exactly) ──────────────────────────────
     private static final Color CYAN      = new Color(38,  208, 206);
@@ -22,7 +27,7 @@ public class ResultFrame extends JFrame {
     private static final Color YELLOW    = new Color(255, 200,  80);
     private static final Color RED       = new Color(255,  90, 120);
 
-    public ResultFrame(LoginFrame.User user, int score, int total) {
+    public ResultFrame(model.User user, int score, int total) {
         this.user = user;
         this.latestScore = score;
         this.latestTotal = total;
@@ -32,6 +37,13 @@ public class ResultFrame extends JFrame {
         setMinimumSize(new Dimension(1200, 750));
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        dao.ResultDAO rDao = new dao.ResultDAO();
+        dao.QuizDAO qDao = new dao.QuizDAO();
+        this.totalQuizzesAvailable = qDao.getTotalQuizzesCount();
+        this.completedQuizzesCount = rDao.getStudentCompletedQuizzesCount(user.getUserId());
+        this.scoresOver90Count = rDao.getStudentScoresOver90Count(user.getUserId());
+        this.quizHistory = rDao.getStudentResults(user.getUserId());
 
         StudentDashboard.BlobBackground root = new StudentDashboard.BlobBackground();
         root.setLayout(new BorderLayout());
@@ -75,9 +87,7 @@ public class ResultFrame extends JFrame {
 
         side.add(buildNavItem("🏠", "Dashboard",  false));
         side.add(Box.createVerticalStrut(10));
-        side.add(buildNavItem("📚", "Courses", false));
-        side.add(Box.createVerticalStrut(10));
-        side.add(buildNavItem("📝", "Start Quiz", false));
+        side.add(buildNavItem("📚", "Quizzes", false));
         side.add(Box.createVerticalStrut(10));
         side.add(buildNavItem("📈", "Performance",  true));
 
@@ -129,9 +139,8 @@ public class ResultFrame extends JFrame {
             @Override public void mouseExited(MouseEvent e)  { if(!active) lbl.setForeground(TEXT_DIM); }
             @Override public void mouseClicked(MouseEvent e) {
                 if (active) return;
-                if (label.equals("Dashboard")) { dispose(); new StudentDashboard(user).setVisible(true); }
-                else if (label.equals("Start Quiz")) { dispose(); new QuizFrame(user).setVisible(true); }
-                else if (label.equals("Courses")) { JOptionPane.showMessageDialog(ResultFrame.this, "Courses portal coming soon!"); }
+                if (label.equals("Dashboard")) { dispose(); StudentDashboard sd = new StudentDashboard(user); sd.setVisible(true); }
+                else if (label.equals("Quizzes")) { dispose(); StudentDashboard sd = new StudentDashboard(user); sd.setVisible(true); sd.openTab("Quizzes"); }
             }
         });
 
@@ -146,7 +155,7 @@ public class ResultFrame extends JFrame {
         // Header
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-        header.setBorder(new EmptyBorder(30, 40, 20, 40));
+        header.setBorder(new EmptyBorder(20, 30, 10, 30));
         
         JLabel title = new JLabel("Performance Overview");
         title.setForeground(Color.WHITE);
@@ -163,7 +172,7 @@ public class ResultFrame extends JFrame {
         // Center Content Scroll
         JPanel contentArea = new JPanel(new GridBagLayout());
         contentArea.setOpaque(false);
-        contentArea.setBorder(new EmptyBorder(0, 40, 30, 40));
+        contentArea.setBorder(new EmptyBorder(0, 30, 20, 30));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.BOTH;
         gbc.weighty = 1.0;
@@ -171,79 +180,102 @@ public class ResultFrame extends JFrame {
         // Top Stats Row
         JPanel statsRow = new JPanel(new GridLayout(1, 4, 15, 0));
         statsRow.setOpaque(false);
-        statsRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
-        statsRow.setPreferredSize(new Dimension(1000, 110));
-        statsRow.add(buildTopStatCard("In progress quizzes", "28", "+20%", GREEN));
-        statsRow.add(buildTopStatCard("Completed quizzes", "78", "+20%", RED));
-        statsRow.add(buildTopStatCard("Completed quiz rate", "98%", "+20%", GREEN));
-        statsRow.add(buildTopStatCard("Scores over 90%", "82%", "+20%", GREEN));
+        statsRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
+        statsRow.setPreferredSize(new Dimension(1000, 80));
+        
+        int inProgress = Math.max(0, totalQuizzesAvailable - completedQuizzesCount);
+        int completionRate = totalQuizzesAvailable == 0 ? 0 : (int)((completedQuizzesCount * 100.0) / totalQuizzesAvailable);
+        int over90Rate = completedQuizzesCount == 0 ? 0 : (int)((scoresOver90Count * 100.0) / completedQuizzesCount);
+        
+        statsRow.add(buildTopStatCard("Pending quizzes", String.valueOf(inProgress), "", YELLOW));
+        statsRow.add(buildTopStatCard("Completed quizzes", String.valueOf(completedQuizzesCount), "", CYAN));
+        statsRow.add(buildTopStatCard("Completed quiz rate", completionRate + "%", "", GREEN));
+        statsRow.add(buildTopStatCard("Scores over 90%", over90Rate + "%", "", GREEN));
 
         // Create a wrapper for statsRow to keep it at top
         JPanel topWrapper = new JPanel(new BorderLayout());
         topWrapper.setOpaque(false);
         topWrapper.add(statsRow, BorderLayout.NORTH);
-        topWrapper.setBorder(new EmptyBorder(0, 0, 20, 0));
+        topWrapper.setBorder(new EmptyBorder(0, 0, 12, 0));
 
-        // Left Column (Progress & History)
-        JPanel leftCol = new JPanel();
-        leftCol.setOpaque(false);
-        leftCol.setLayout(new BoxLayout(leftCol, BoxLayout.Y_AXIS));
+        // Main Column
+        JPanel mainCol = new JPanel();
+        mainCol.setOpaque(false);
+        mainCol.setLayout(new BoxLayout(mainCol, BoxLayout.Y_AXIS));
 
+        // 1. Trophy Row (Full Width)
         JLabel tProgress = new JLabel("Track your progress");
         tProgress.setForeground(Color.WHITE);
-        tProgress.setFont(new Font("SansSerif", Font.BOLD, 20));
+        tProgress.setFont(new Font("SansSerif", Font.BOLD, 16));
         tProgress.setAlignmentX(Component.LEFT_ALIGNMENT);
-        leftCol.add(tProgress);
-        leftCol.add(Box.createVerticalStrut(15));
-        leftCol.add(buildTrackProgressCard());
-        leftCol.add(Box.createVerticalStrut(30));
+        mainCol.add(tProgress);
+        mainCol.add(Box.createVerticalStrut(8));
+        mainCol.add(buildTrackProgressCard());
+        mainCol.add(Box.createVerticalStrut(10));
 
-        JLabel tHistory = new JLabel("Quiz history");
-        tHistory.setForeground(Color.WHITE);
-        tHistory.setFont(new Font("SansSerif", Font.BOLD, 20));
-        tHistory.setAlignmentX(Component.LEFT_ALIGNMENT);
-        leftCol.add(tHistory);
-        leftCol.add(Box.createVerticalStrut(15));
-        leftCol.add(buildQuizHistoryCard());
+        // 2. Split Row
+        JPanel splitRow = new JPanel(new GridBagLayout());
+        splitRow.setOpaque(false);
+        GridBagConstraints sbc = new GridBagConstraints();
+        sbc.fill = GridBagConstraints.BOTH;
+        sbc.weighty = 1.0;
 
-        // Right Column (Overall Performance & Keep Practising)
-        JPanel rightCol = new JPanel();
-        rightCol.setOpaque(false);
-        rightCol.setLayout(new BoxLayout(rightCol, BoxLayout.Y_AXIS));
-
+        // Left Part: Donut Chart
+        JPanel leftPart = new JPanel();
+        leftPart.setOpaque(false);
+        leftPart.setLayout(new BoxLayout(leftPart, BoxLayout.Y_AXIS));
+        
         JLabel tOverall = new JLabel("Overall quiz performance");
         tOverall.setForeground(Color.WHITE);
-        tOverall.setFont(new Font("SansSerif", Font.BOLD, 20));
+        tOverall.setFont(new Font("SansSerif", Font.BOLD, 16));
         tOverall.setAlignmentX(Component.LEFT_ALIGNMENT);
-        rightCol.add(tOverall);
-        rightCol.add(Box.createVerticalStrut(15));
-        rightCol.add(buildOverallPerformanceCard());
-        rightCol.add(Box.createVerticalStrut(20));
-        rightCol.add(buildKeepPractisingCard());
+        leftPart.add(tOverall);
+        leftPart.add(Box.createVerticalStrut(8));
+        leftPart.add(buildOverallPerformanceCard());
 
-        // Assembly
-        JPanel centerSplit = new JPanel(new GridBagLayout());
-        centerSplit.setOpaque(false);
+        // Right Part: History & Keep Practising
+        JPanel rightPart = new JPanel();
+        rightPart.setOpaque(false);
+        rightPart.setLayout(new BoxLayout(rightPart, BoxLayout.Y_AXIS));
         
-        GridBagConstraints cSplit = new GridBagConstraints();
-        cSplit.fill = GridBagConstraints.BOTH;
-        cSplit.weighty = 1.0;
-        
-        cSplit.weightx = 0.55;
-        cSplit.insets = new Insets(0, 0, 0, 20);
-        centerSplit.add(leftCol, cSplit);
-        
-        cSplit.gridx = 1;
-        cSplit.weightx = 0.45;
-        cSplit.insets = new Insets(0, 0, 0, 0);
-        centerSplit.add(rightCol, cSplit);
+        JLabel tHistory = new JLabel("Quiz history");
+        tHistory.setForeground(Color.WHITE);
+        tHistory.setFont(new Font("SansSerif", Font.BOLD, 16));
+        tHistory.setAlignmentX(Component.LEFT_ALIGNMENT);
+        rightPart.add(tHistory);
+        rightPart.add(Box.createVerticalStrut(8));
+        rightPart.add(buildQuizHistoryCard());
+        rightPart.add(Box.createVerticalStrut(12));
+        rightPart.add(buildKeepPractisingCard());
+
+        sbc.weightx = 0.35;
+        sbc.insets = new Insets(0, 0, 0, 12);
+        splitRow.add(leftPart, sbc);
+
+        sbc.gridx = 1;
+        sbc.weightx = 0.65;
+        sbc.insets = new Insets(0, 0, 0, 0);
+        splitRow.add(rightPart, sbc);
+
+        mainCol.add(splitRow);
 
         JPanel contentScrollWrapper = new JPanel(new BorderLayout());
         contentScrollWrapper.setOpaque(false);
         contentScrollWrapper.add(topWrapper, BorderLayout.NORTH);
-        contentScrollWrapper.add(centerSplit, BorderLayout.CENTER);
+        
+        JPanel centerWrap = new JPanel(new BorderLayout());
+        centerWrap.setOpaque(false);
+        centerWrap.add(mainCol, BorderLayout.NORTH); 
+        
+        contentScrollWrapper.add(centerWrap, BorderLayout.CENTER);
 
-        main.add(contentScrollWrapper, BorderLayout.CENTER);
+        JScrollPane scroll = new JScrollPane(contentScrollWrapper);
+        scroll.setBorder(null);
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+
+        main.add(scroll, BorderLayout.CENTER);
         return main;
     }
 
@@ -252,20 +284,20 @@ public class ResultFrame extends JFrame {
     private JPanel buildTopStatCard(String title, String value, String change, Color tagColor) {
         StudentDashboard.GlassCard card = new StudentDashboard.GlassCard(16);
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBorder(new EmptyBorder(15, 20, 15, 20));
+        card.setBorder(new EmptyBorder(8, 12, 8, 12));
         
         JLabel tLbl = new JLabel(title);
         tLbl.setForeground(TEXT_DIM);
-        tLbl.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        tLbl.setFont(new Font("SansSerif", Font.PLAIN, 12));
         tLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        JPanel valRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        JPanel valRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         valRow.setOpaque(false);
         valRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         JLabel vLbl = new JLabel(value);
         vLbl.setForeground(Color.WHITE);
-        vLbl.setFont(new Font("SansSerif", Font.BOLD, 28));
+        vLbl.setFont(new Font("SansSerif", Font.BOLD, 20));
         
         JPanel tag = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
@@ -320,8 +352,8 @@ public class ResultFrame extends JFrame {
         };
         card.setOpaque(false);
         card.setLayout(new BorderLayout());
-        card.setBorder(new EmptyBorder(25, 30, 25, 30));
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
+        card.setBorder(new EmptyBorder(10, 20, 10, 20));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
         
         JPanel leftBlock = new JPanel();
         leftBlock.setOpaque(false);
@@ -331,9 +363,9 @@ public class ResultFrame extends JFrame {
         valRow.setOpaque(false);
         valRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         
-        JLabel num = new JLabel("50");
-        num.setForeground(Color.WHITE);
-        num.setFont(new Font("SansSerif", Font.BOLD, 48));
+        JLabel valLbl = new JLabel(String.valueOf(completedQuizzesCount));
+        valLbl.setForeground(Color.WHITE);
+        valLbl.setFont(new Font("SansSerif", Font.BOLD, 28));
         
         JPanel tag = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
@@ -351,7 +383,7 @@ public class ResultFrame extends JFrame {
         tLbl.setFont(new Font("SansSerif", Font.BOLD, 12));
         tag.add(tLbl);
         
-        valRow.add(num);
+        valRow.add(valLbl);
         valRow.add(tag);
         
         JLabel sub1 = new JLabel("Exceptional milestone!");
@@ -365,13 +397,13 @@ public class ResultFrame extends JFrame {
         sub2.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         leftBlock.add(valRow);
-        leftBlock.add(Box.createVerticalStrut(10));
-        leftBlock.add(sub1);
         leftBlock.add(Box.createVerticalStrut(4));
+        leftBlock.add(sub1);
+        leftBlock.add(Box.createVerticalStrut(2));
         leftBlock.add(sub2);
         
         JLabel trophy = new JLabel("🏆");
-        trophy.setFont(new Font("SansSerif", Font.PLAIN, 72));
+        trophy.setFont(new Font("SansSerif", Font.PLAIN, 36));
         
         card.add(leftBlock, BorderLayout.WEST);
         card.add(trophy, BorderLayout.EAST);
@@ -382,7 +414,7 @@ public class ResultFrame extends JFrame {
     private JPanel buildQuizHistoryCard() {
         StudentDashboard.GlassCard card = new StudentDashboard.GlassCard(20);
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBorder(new EmptyBorder(15, 20, 15, 20));
+        card.setBorder(new EmptyBorder(10, 15, 10, 15));
         
         // Header
         JPanel headerRow = new JPanel(new GridLayout(1, 4, 10, 0));
@@ -394,16 +426,20 @@ public class ResultFrame extends JFrame {
         headerRow.add(createColHeader("Actions"));
         
         card.add(headerRow);
-        card.add(Box.createVerticalStrut(10));
+        card.add(Box.createVerticalStrut(5));
         
         // Rows
-        card.add(buildHistoryRow("English", "10/15", "Completed", GREEN));
-        card.add(buildHistoryRow("Science", "-", "Unattempted", RED));
-        card.add(buildHistoryRow("Maths", "14/15", "Completed", GREEN));
-        card.add(buildHistoryRow("History", "-", "Unattempted", RED));
+        for (int i = 0; i < quizHistory.size() && i < 10; i++) {
+            model.ResultDetail rd = quizHistory.get(i);
+            card.add(buildHistoryRow(rd.getQuizTitle(), rd.getScore() + "/" + rd.getTotalMarks(), "Completed", GREEN));
+        }
         
-        // Latest Quiz Row if passed
-        if (latestTotal > 0) {
+        if (quizHistory.isEmpty()) {
+            card.add(buildHistoryRow("No quizzes taken yet.", "-", "-", TEXT_DIM));
+        }
+        
+        // Latest Quiz Row if passed and not already at top
+        if (latestTotal > 0 && quizHistory.isEmpty()) {
             String status = "Completed";
             card.add(buildHistoryRow("Latest Quiz", latestScore + "/" + latestTotal, status, CYAN));
         }
@@ -454,7 +490,7 @@ public class ResultFrame extends JFrame {
     private JPanel buildOverallPerformanceCard() {
         StudentDashboard.GlassCard card = new StudentDashboard.GlassCard(20);
         card.setLayout(new BorderLayout());
-        card.setBorder(new EmptyBorder(25, 25, 25, 25));
+        card.setBorder(new EmptyBorder(15, 15, 15, 15));
         
         // Donut Chart Area
         JPanel chartPanel = new JPanel() {
@@ -462,7 +498,7 @@ public class ResultFrame extends JFrame {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                int strokeWidth = 16;
+                int strokeWidth = 12;
                 int size = Math.min(getWidth(), getHeight()) - strokeWidth * 2 - 10;
                 int x = (getWidth() - size) / 2;
                 int y = (getHeight() - size) / 2;
@@ -472,45 +508,55 @@ public class ResultFrame extends JFrame {
                 g2.setStroke(new BasicStroke(strokeWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 g2.drawArc(x, y, size, size, 0, 360);
                 
-                // Completed (Blue)
-                g2.setColor(BLUE);
-                g2.drawArc(x, y, size, size, 90, 160);
+                int completed = completedQuizzesCount;
+                int total = totalQuizzesAvailable;
+                int over90 = scoresOver90Count;
+                int inProgress = Math.max(0, total - completed);
+
+                int angleCompleted = total == 0 ? 0 : (int)((completed * 360.0) / total);
+                int angleOver90 = total == 0 ? 0 : (int)((over90 * 360.0) / total);
+                int angleInProgress = total == 0 ? 0 : (int)((inProgress * 360.0) / total);
+                
+                // Completed (Purple)
+                g2.setColor(PURPLE);
+                g2.drawArc(x, y, size, size, 90, angleCompleted);
                 
                 // Scores over 90% (Yellow)
                 g2.setColor(YELLOW);
-                g2.drawArc(x, y, size, size, 270, 70);
+                g2.drawArc(x, y, size, size, 90 + angleCompleted, angleOver90);
                 
                 // In progress (Grey/Cyan)
                 g2.setColor(CYAN);
-                g2.drawArc(x, y, size, size, 20, 50);
+                g2.drawArc(x, y, size, size, 90 + angleCompleted + angleOver90, angleInProgress);
                 
                 // Center Text
                 g2.setColor(TEXT_DIM);
-                g2.setFont(new Font("SansSerif", Font.PLAIN, 12));
+                g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
                 FontMetrics fm = g2.getFontMetrics();
                 String t1 = "Total quizzes";
                 g2.drawString(t1, getWidth()/2 - fm.stringWidth(t1)/2, getHeight()/2 - 10);
                 
                 g2.setColor(Color.WHITE);
-                g2.setFont(new Font("SansSerif", Font.BOLD, 28));
+                g2.setFont(new Font("SansSerif", Font.BOLD, 22));
                 fm = g2.getFontMetrics();
-                String t2 = "1500";
+                String t2 = String.valueOf(total);
                 g2.drawString(t2, getWidth()/2 - fm.stringWidth(t2)/2, getHeight()/2 + 25);
                 
                 g2.dispose();
             }
         };
         chartPanel.setOpaque(false);
-        chartPanel.setPreferredSize(new Dimension(300, 250));
+        chartPanel.setPreferredSize(new Dimension(250, 180));
         
         // Legends
-        JPanel legends = new JPanel(new GridLayout(2, 2, 10, 15));
+        JPanel legends = new JPanel(new GridLayout(2, 2, 8, 8));
         legends.setOpaque(false);
-        legends.setBorder(new EmptyBorder(10, 20, 0, 20));
+        legends.setBorder(new EmptyBorder(8, 10, 0, 10));
         
-        legends.add(buildLegend("Completed", "375/1500", BLUE));
-        legends.add(buildLegend("In progress", "375/1500", CYAN));
-        legends.add(buildLegend("Scores over 90%", "375/1500", YELLOW));
+        int inProgress = Math.max(0, totalQuizzesAvailable - completedQuizzesCount);
+        legends.add(buildLegend("Completed", completedQuizzesCount + "/" + totalQuizzesAvailable, PURPLE));
+        legends.add(buildLegend("In progress", inProgress + "/" + totalQuizzesAvailable, CYAN));
+        legends.add(buildLegend("Scores over 90%", scoresOver90Count + "/" + totalQuizzesAvailable, YELLOW));
         
         card.add(chartPanel, BorderLayout.CENTER);
         card.add(legends, BorderLayout.SOUTH);
@@ -557,14 +603,14 @@ public class ResultFrame extends JFrame {
     private JPanel buildKeepPractisingCard() {
         StudentDashboard.GlassCard card = new StudentDashboard.GlassCard(20);
         card.setLayout(new BorderLayout());
-        card.setBorder(new EmptyBorder(20, 25, 20, 25));
+        card.setBorder(new EmptyBorder(12, 15, 12, 15));
         
         JPanel top = new JPanel(new BorderLayout());
         top.setOpaque(false);
         
-        JLabel scoreL = new JLabel("5/15");
+        JLabel scoreL = new JLabel(completedQuizzesCount + "/" + totalQuizzesAvailable);
         scoreL.setForeground(Color.WHITE);
-        scoreL.setFont(new Font("SansSerif", Font.BOLD, 32));
+        scoreL.setFont(new Font("SansSerif", Font.BOLD, 24));
         
         JPanel tag = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
@@ -588,7 +634,7 @@ public class ResultFrame extends JFrame {
         JPanel center = new JPanel();
         center.setOpaque(false);
         center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
-        center.setBorder(new EmptyBorder(15, 0, 15, 0));
+        center.setBorder(new EmptyBorder(8, 0, 8, 0));
         
         JLabel msgTitle = new JLabel("Keep practising!");
         msgTitle.setForeground(Color.WHITE);
@@ -596,7 +642,7 @@ public class ResultFrame extends JFrame {
         
         JLabel msgSub = new JLabel("<html>Improve your confidence in Computer Science by<br>practicing another quiz</html>");
         msgSub.setForeground(TEXT_DIM);
-        msgSub.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        msgSub.setFont(new Font("SansSerif", Font.PLAIN, 11));
         
         center.add(msgTitle);
         center.add(Box.createVerticalStrut(5));
@@ -611,9 +657,9 @@ public class ResultFrame extends JFrame {
         newQuiz.setOpaque(true);
         newQuiz.setBackground(new Color(60, 80, 150));
         newQuiz.setForeground(Color.WHITE);
-        newQuiz.setFont(new Font("SansSerif", Font.BOLD, 13));
+        newQuiz.setFont(new Font("SansSerif", Font.BOLD, 12));
         newQuiz.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        newQuiz.addActionListener(e -> { dispose(); new QuizFrame(user).setVisible(true); });
+        newQuiz.addActionListener(e -> { dispose(); new StudentDashboard(user).setVisible(true); });
         
         bot.add(newQuiz);
         

@@ -32,7 +32,7 @@ public class TeacherDashboard extends JFrame {
 
     private CardLayout cardLayout;
     private JPanel contentPanel, dashWrap;
-    private QuizCreationPanel quizPanel;
+    private QuizManagementPanel quizPanel;
     private User currentUser;
     private final List<SidebarItem> sidebarItems = new ArrayList<>();
 
@@ -59,7 +59,7 @@ public class TeacherDashboard extends JFrame {
         JPanel quizWrap = new JPanel(new BorderLayout());
         quizWrap.setBackground(BG);
         quizWrap.setBorder(new EmptyBorder(20, 30, 20, 30));
-        quizPanel = new QuizCreationPanel(() -> { refreshDashboard(); setActiveTab("Dashboard"); cardLayout.show(contentPanel, "dashboard"); });
+        quizPanel = new QuizManagementPanel(() -> refreshDashboard());
         quizWrap.add(quizPanel, BorderLayout.CENTER);
         contentPanel.add(quizWrap, "quiz");
 
@@ -86,7 +86,7 @@ public class TeacherDashboard extends JFrame {
 
         addItem(sb, "Dashboard", true, () -> { refreshDashboard(); cardLayout.show(contentPanel, "dashboard"); });
         sb.add(Box.createVerticalStrut(4));
-        addItem(sb, "Quizzes", false, () -> { quizPanel.reset(); cardLayout.show(contentPanel, "quiz"); });
+        addItem(sb, "Quizzes", false, () -> { quizPanel.showList(); cardLayout.show(contentPanel, "quiz"); });
         sb.add(Box.createVerticalStrut(4));
         addItem(sb, "Students", false, () -> cardLayout.show(contentPanel, "students"));
         sb.add(Box.createVerticalStrut(4));
@@ -364,7 +364,7 @@ public class TeacherDashboard extends JFrame {
                 info.add(n); info.add(tm); row.add(info, BorderLayout.CENTER);
                 JButton ed = new JButton("Edit"); ed.setFont(new Font("SansSerif", Font.BOLD, 11)); ed.setForeground(accents[ci]);
                 ed.setContentAreaFilled(false); ed.setBorderPainted(false); ed.setFocusPainted(false); ed.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                ed.addActionListener(ev -> { quizPanel.loadQuiz(q); setActiveTab("Quizzes"); cardLayout.show(contentPanel, "quiz"); });
+                ed.addActionListener(ev -> { quizPanel.editQuizDirectly(q); setActiveTab("Quizzes"); cardLayout.show(contentPanel, "quiz"); });
                 row.add(ed, BorderLayout.EAST);
                 list.add(row); list.add(Box.createVerticalStrut(8));
             }

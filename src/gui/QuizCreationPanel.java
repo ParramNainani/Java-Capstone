@@ -37,7 +37,7 @@ public class QuizCreationPanel extends JPanel {
 
         // Header
         JPanel hdr = new JPanel(new BorderLayout()); hdr.setOpaque(false); hdr.setBorder(new EmptyBorder(0, 0, 15, 0));
-        JButton backBtn = makeBtn("← Back to Dashboard", Color.WHITE, DARK);
+        JButton backBtn = makeBtn("← Back to Quizzes", Color.WHITE, DARK);
         backBtn.addActionListener(e -> backAction.run());
         hdr.add(backBtn, BorderLayout.WEST);
         JButton saveBtn = makeBtn("Save Quiz", PURPLE, Color.BLACK);

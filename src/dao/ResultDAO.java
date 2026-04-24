@@ -181,4 +181,95 @@ public class ResultDAO {
         }
         return 0;
     }
+
+    public List<model.ResultDetail> getStudentResults(int userId) {
+        List<model.ResultDetail> details = new ArrayList<>();
+        String sql = "SELECT r.result_id, u.username, q.title, r.score, r.total_marks " +
+                     "FROM results r " +
+                     "JOIN users u ON r.user_id = u.user_id " +
+                     "JOIN quizzes q ON r.quiz_id = q.numeric_quiz_id " +
+                     "WHERE r.user_id = ? ORDER BY r.result_id DESC";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    details.add(new model.ResultDetail(
+                        rs.getInt("result_id"),
+                        rs.getString("username"),
+                        rs.getString("title"),
+                        rs.getInt("score"),
+                        rs.getInt("total_marks")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error retrieving student results: " + e.getMessage());
+        }
+        return details;
+    }
+
+    public int getStudentCompletedQuizzesCount(int userId) {
+        String sql = "SELECT COUNT(*) FROM results WHERE user_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+        return 0;
+    }
+
+    public int getStudentScoresOver90Count(int userId) {
+        int count = 0;
+        String sql = "SELECT score, total_marks FROM results WHERE user_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int score = rs.getInt("score");
+                    int total = rs.getInt("total_marks");
+                    if (total > 0 && (score * 100.0 / total) >= 90.0) {
+                        count++;
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+        return count;
+    }
+
+    /**
+     * Returns an array of 7 ints: quizzes completed per day for the last 7 days.
+     * Index 0 = 6 days ago, Index 6 = today.
+     */
+    public int[] getStudentDailyQuizCounts(int userId) {
+        int[] counts = new int[7];
+        String sql = "SELECT DATE(taken_at) AS quiz_date, COUNT(*) AS cnt " +
+                     "FROM results WHERE user_id = ? AND taken_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) " +
+                     "GROUP BY DATE(taken_at) ORDER BY quiz_date";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    java.sql.Date d = rs.getDate("quiz_date");
+                    long daysDiff = java.time.temporal.ChronoUnit.DAYS.between(
+                        d.toLocalDate(), java.time.LocalDate.now());
+                    int idx = 6 - (int) daysDiff;
+                    if (idx >= 0 && idx < 7) {
+                        counts[idx] = rs.getInt("cnt");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting daily quiz counts: " + e.getMessage());
+        }
+        return counts;
+    }
 }

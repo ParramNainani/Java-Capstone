@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS results (
     quiz_id INT,
     score INT NOT NULL,
     total_marks INT NOT NULL,
+    taken_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (quiz_id) REFERENCES quizzes(numeric_quiz_id) ON DELETE CASCADE
 );

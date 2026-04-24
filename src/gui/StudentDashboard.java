@@ -14,6 +14,9 @@ import model.User;
 public class StudentDashboard extends JFrame {
 
     private final User user;
+    private CardLayout cardLayout;
+    private JPanel cardPanel;
+    private StudentQuizzesPanel quizzesPanel;
 
     // ── Brand colours (mirrors LoginFrame exactly) ──────────────────────────────
     private static final Color CYAN      = new Color(38,  208, 206);
@@ -37,14 +40,22 @@ public class StudentDashboard extends JFrame {
         BlobBackground root = new BlobBackground();
         root.setLayout(new BorderLayout());
 
-        root.add(buildSidebar(), BorderLayout.WEST);
-        root.add(buildMainArea(), BorderLayout.CENTER);
+        cardLayout = new CardLayout();
+        cardPanel = new JPanel(cardLayout);
+        cardPanel.setOpaque(false);
+        
+        cardPanel.add(buildMainArea(), "Dashboard");
+        quizzesPanel = new StudentQuizzesPanel(user, () -> {});
+        cardPanel.add(quizzesPanel, "Quizzes");
+
+        root.add(buildSidebar("Dashboard"), BorderLayout.WEST);
+        root.add(cardPanel, BorderLayout.CENTER);
 
         setContentPane(root);
     }
 
     // ── Sidebar ────────────────────────────────────────────────────────────────
-    private JPanel buildSidebar() {
+    private JPanel buildSidebar(String activeTab) {
         JPanel side = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -77,11 +88,9 @@ public class StudentDashboard extends JFrame {
         side.add(Box.createVerticalStrut(50));
 
         // Nav items
-        side.add(buildNavItem("🏠", "Dashboard",  true));
+        side.add(buildNavItem("🏠", "Dashboard",  activeTab.equals("Dashboard")));
         side.add(Box.createVerticalStrut(10));
-        side.add(buildNavItem("📚", "Courses", false));
-        side.add(Box.createVerticalStrut(10));
-        side.add(buildNavItem("📝", "Start Quiz", false));
+        side.add(buildNavItem("📚", "Quizzes", activeTab.equals("Quizzes")));
         side.add(Box.createVerticalStrut(10));
         side.add(buildNavItem("📈", "Performance",  false));
 
@@ -100,6 +109,15 @@ public class StudentDashboard extends JFrame {
         side.add(logout);
 
         return side;
+    }
+
+    private void updateSidebarSelection(String activeTab) {
+        BorderLayout layout = (BorderLayout) getContentPane().getLayout();
+        Component oldSidebar = layout.getLayoutComponent(BorderLayout.WEST);
+        if (oldSidebar != null) getContentPane().remove(oldSidebar);
+        getContentPane().add(buildSidebar(activeTab), BorderLayout.WEST);
+        getContentPane().revalidate();
+        getContentPane().repaint();
     }
 
     private JPanel buildNavItem(String icon, String label, boolean active) {
@@ -134,13 +152,21 @@ public class StudentDashboard extends JFrame {
             @Override public void mouseExited(MouseEvent e)  { if(!active) lbl.setForeground(TEXT_DIM); }
             @Override public void mouseClicked(MouseEvent e) {
                 if (active) return;
-                if (label.equals("Start Quiz")) { dispose(); new QuizFrame(user).setVisible(true); }
-                else if (label.equals("Performance")) { dispose(); new ResultFrame(user, 0, 0).setVisible(true); }
-                else if (label.equals("Courses")) { JOptionPane.showMessageDialog(StudentDashboard.this, "Courses portal coming soon!"); }
+                if (label.equals("Performance")) { dispose(); new ResultFrame(user, 0, 0).setVisible(true); }
+                else if (label.equals("Quizzes")) { openTab("Quizzes"); } 
+                else if (label.equals("Dashboard")) { openTab("Dashboard"); }
             }
         });
 
         return item;
+    }
+
+    public void openTab(String tabName) {
+        if (tabName.equals("Quizzes")) {
+            quizzesPanel.refreshData();
+        }
+        cardLayout.show(cardPanel, tabName);
+        updateSidebarSelection(tabName);
     }
 
     // ── Main Content Area ─────────────────────────────────────────────────────
@@ -157,7 +183,7 @@ public class StudentDashboard extends JFrame {
         greetBlock.setOpaque(false);
         greetBlock.setLayout(new BoxLayout(greetBlock, BoxLayout.Y_AXIS));
 
-        String firstName = user.fullName.split(" ")[0];
+        String firstName = user.getUsername().split(" ")[0];
         JLabel greet = new JLabel("Welcome back, " + firstName + " 👋");
         greet.setForeground(Color.WHITE);
         greet.setFont(new Font("SansSerif", Font.BOLD, 32));
@@ -220,12 +246,18 @@ public class StudentDashboard extends JFrame {
         leftCol.setLayout(new BoxLayout(leftCol, BoxLayout.Y_AXIS));
         
         // Top Stats Row
+        dao.ResultDAO rDao = new dao.ResultDAO();
+        dao.QuizDAO qDao = new dao.QuizDAO();
+        int totalQuizzes = qDao.getTotalQuizzesCount();
+        int completed = rDao.getStudentCompletedQuizzesCount(user.getUserId());
+        int pending = Math.max(0, totalQuizzes - completed);
+        
         JPanel statsRow = new JPanel(new GridLayout(1, 3, 20, 0));
         statsRow.setOpaque(false);
         statsRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 110));
-        statsRow.add(buildStatCard("11", "Completed courses", new Color(138,43,226, 80)));
-        statsRow.add(buildStatCard("03", "Studied courses", new Color(38,208,206, 80)));
-        statsRow.add(buildStatCard("12", "Pending courses", new Color(255,200,80, 80)));
+        statsRow.add(buildStatCard(String.format("%02d", completed), "Completed quizzes", new Color(138,43,226, 80)));
+        statsRow.add(buildStatCard(String.format("%02d", totalQuizzes), "Total quizzes", new Color(38,208,206, 80)));
+        statsRow.add(buildStatCard(String.format("%02d", pending), "Pending quizzes", new Color(255,200,80, 80)));
         leftCol.add(statsRow);
         leftCol.add(Box.createVerticalStrut(20));
         
@@ -236,24 +268,14 @@ public class StudentDashboard extends JFrame {
         
         JPanel graphHeader = new JPanel(new BorderLayout());
         graphHeader.setOpaque(false);
-        JLabel pTitle = new JLabel("Productivity");
+        JLabel pTitle = new JLabel("Quiz Activity");
         pTitle.setForeground(Color.WHITE);
         pTitle.setFont(new Font("SansSerif", Font.BOLD, 18));
-        JLabel pWeek = new JLabel("Week ▼");
+        JLabel pWeek = new JLabel("Last 7 Days");
         pWeek.setForeground(TEXT_DIM);
-        pWeek.setCursor(new Cursor(Cursor.HAND_CURSOR));
         
-        ProductivityGraph pGraph = new ProductivityGraph();
-        pWeek.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
-                if (pWeek.getText().equals("Week ▼")) {
-                    pWeek.setText("Month ▼");
-                } else {
-                    pWeek.setText("Week ▼");
-                }
-                pGraph.toggleData();
-            }
-        });
+        ProductivityGraph pGraph = new ProductivityGraph(user.getUserId());
+
 
         graphHeader.add(pTitle, BorderLayout.WEST);
         graphHeader.add(pWeek, BorderLayout.EAST);
@@ -268,7 +290,7 @@ public class StudentDashboard extends JFrame {
         JPanel coursesHeader = new JPanel(new BorderLayout());
         coursesHeader.setOpaque(false);
         coursesHeader.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        JLabel cTitle = new JLabel("Courses");
+        JLabel cTitle = new JLabel("Quizzes");
         cTitle.setForeground(Color.WHITE);
         cTitle.setFont(new Font("SansSerif", Font.BOLD, 18));
         JLabel cView = new JLabel("View all");
@@ -276,12 +298,16 @@ public class StudentDashboard extends JFrame {
         coursesHeader.add(cTitle, BorderLayout.WEST);
         coursesHeader.add(cView, BorderLayout.EAST);
         
-        JPanel coursesRow = new JPanel(new GridLayout(1, 3, 20, 0));
+        JPanel coursesRow = new JPanel();
+        coursesRow.setLayout(new BoxLayout(coursesRow, BoxLayout.X_AXIS));
         coursesRow.setOpaque(false);
         coursesRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 180));
-        coursesRow.add(buildCourseCard("UI/UX Design", "Projecting interfaces", 45, new Color(138,43,226)));
-        coursesRow.add(buildCourseCard("Figma Pro", "UX designer scratch", 80, new Color(255,200,80)));
-        coursesRow.add(buildCourseCard("HTML/CSS", "Frontend basics", 65, new Color(38,208,206)));
+        
+        int scoresOver90 = rDao.getStudentScoresOver90Count(user.getUserId());
+        
+        coursesRow.add(buildStatCard(String.format("%02d", completed), "Completed quizzes", new Color(138,43,226, 150)));
+        coursesRow.add(buildStatCard(String.format("%02d", scoresOver90), "Scores over 90%", new Color(38,208,206, 150)));
+        coursesRow.add(buildStatCard(String.format("%02d", pending), "Pending quizzes", new Color(255,200,80, 150)));
         
         leftCol.add(coursesHeader);
         leftCol.add(Box.createVerticalStrut(10));
@@ -353,76 +379,7 @@ public class StudentDashboard extends JFrame {
         return card;
     }
 
-    private JPanel buildCourseCard(String tag, String title, int progress, Color accent) {
-        GlassCard card = new GlassCard(16);
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBorder(new EmptyBorder(15, 15, 15, 15));
-        card.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        card.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                JOptionPane.showMessageDialog(StudentDashboard.this, "Opening course: " + title);
-            }
-        });
-        
-        // Placeholder illustration area
-        JPanel imgArea = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 30));
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
-                
-                // Draw some abstract shapes to mimic illustration
-                g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 80));
-                g2.fillRoundRect(20, 20, getWidth()-40, 40, 5, 5);
-                g2.fillOval(getWidth()/2-15, getHeight()/2+5, 30, 30);
-                
-                g2.dispose();
-            }
-        };
-        imgArea.setOpaque(false);
-        imgArea.setPreferredSize(new Dimension(200, 100));
-        imgArea.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
-        
-        JLabel tLbl = new JLabel("<html><b>" + title + "</b></html>");
-        tLbl.setForeground(Color.WHITE);
-        tLbl.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        tLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        JPanel progRow = new JPanel(new BorderLayout());
-        progRow.setOpaque(false);
-        progRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
-        
-        JLabel pLbl = new JLabel(progress + "%");
-        pLbl.setForeground(accent);
-        pLbl.setFont(new Font("SansSerif", Font.BOLD, 12));
-        
-        JPanel pBar = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(255,255,255,30));
-                g2.fillRoundRect(0, getHeight()/2-3, getWidth(), 6, 6, 6);
-                int w = (int)(getWidth() * (progress/100.0));
-                g2.setColor(accent);
-                g2.fillRoundRect(0, getHeight()/2-3, w, 6, 6, 6);
-                g2.dispose();
-            }
-        };
-        pBar.setOpaque(false);
-        pBar.setPreferredSize(new Dimension(100, 20));
-        
-        progRow.add(tLbl, BorderLayout.WEST);
-        progRow.add(pLbl, BorderLayout.EAST);
-        
-        card.add(imgArea);
-        card.add(Box.createVerticalStrut(10));
-        card.add(progRow);
-        card.add(pBar);
-        
-        return card;
-    }
+
 
     private JPanel buildAchievementBoard() {
         JPanel board = new JPanel(new BorderLayout()) {
@@ -452,7 +409,7 @@ public class StudentDashboard extends JFrame {
                 g2.fillOval(0,0,getWidth(),getHeight());
                 g2.setColor(Color.WHITE);
                 g2.setFont(new Font("SansSerif", Font.BOLD, 30));
-                String in = getInitials(user.fullName);
+                String in = getInitials(user.getUsername());
                 FontMetrics fm = g2.getFontMetrics();
                 g2.drawString(in, (getWidth()-fm.stringWidth(in))/2, (getHeight()+fm.getAscent()-fm.getDescent())/2);
                 g2.dispose();
@@ -463,7 +420,7 @@ public class StudentDashboard extends JFrame {
         avatar.setMaximumSize(new Dimension(80, 80));
         avatar.setAlignmentX(Component.CENTER_ALIGNMENT);
         
-        JLabel nameL = new JLabel(user.fullName);
+        JLabel nameL = new JLabel(user.getUsername());
         nameL.setForeground(Color.WHITE);
         nameL.setFont(new Font("SansSerif", Font.BOLD, 22));
         nameL.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -479,17 +436,7 @@ public class StudentDashboard extends JFrame {
         top.add(Box.createVerticalStrut(5));
         top.add(verified);
         
-        // Stats Row
-        JPanel stats = new JPanel(new GridLayout(1, 3, 10, 0));
-        stats.setOpaque(false);
-        stats.setBorder(new EmptyBorder(10, 20, 20, 20));
-        
-        stats.add(buildBoardStat("38", "Friends", new Color(255,255,255, 40)));
-        stats.add(buildBoardStat("14", "Achievement", new Color(255,255,255, 40)));
-        stats.add(buildBoardStat("5.0", "Rating", new Color(255,255,255, 40)));
-        
         board.add(top, BorderLayout.CENTER);
-        board.add(stats, BorderLayout.SOUTH);
         
         return board;
     }
@@ -527,17 +474,30 @@ public class StudentDashboard extends JFrame {
     // ── Components ────────────────────────────────────────────────────────────
 
     static class ProductivityGraph extends JPanel {
-        private int[] targetData = { 2, 4, 3, 6, 4, 8, 5 };
-        private float[] currentData = { 2, 4, 3, 6, 4, 8, 5 };
-        private boolean isWeekly = true;
+        private int[] targetData;
+        private float[] currentData;
         private Timer animTimer;
+        private String[] dayLabels = new String[7];
         
-        ProductivityGraph() {
+        ProductivityGraph(int userId) {
             setOpaque(false);
+            
+            // Fetch real data
+            dao.ResultDAO rDao = new dao.ResultDAO();
+            targetData = rDao.getStudentDailyQuizCounts(userId);
+            currentData = new float[7];
+            
+            // Generate labels (Mo, Tu, etc.)
+            java.time.LocalDate today = java.time.LocalDate.now();
+            java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("EEE");
+            for (int i = 0; i < 7; i++) {
+                dayLabels[i] = today.minusDays(6 - i).format(fmt).substring(0, 2);
+            }
+
             animTimer = new Timer(20, e -> {
                 boolean done = true;
                 for (int i=0; i<currentData.length; i++) {
-                    if (Math.abs(currentData[i] - targetData[i]) > 0.1f) {
+                    if (Math.abs(currentData[i] - targetData[i]) > 0.05f) {
                         currentData[i] += (targetData[i] - currentData[i]) * 0.15f;
                         done = false;
                     } else {
@@ -547,16 +507,11 @@ public class StudentDashboard extends JFrame {
                 repaint();
                 if (done) animTimer.stop();
             });
+            animTimer.start();
         }
         
         public void toggleData() {
-            isWeekly = !isWeekly;
-            if (isWeekly) {
-                targetData = new int[]{ 2, 4, 3, 6, 4, 8, 5 };
-            } else {
-                targetData = new int[]{ 5, 2, 7, 3, 6, 4, 8 };
-            }
-            animTimer.start();
+            // Not used for now as we show real 7-day data
         }
 
         @Override protected void paintComponent(Graphics g) {
@@ -567,6 +522,10 @@ public class StudentDashboard extends JFrame {
             int w = getWidth();
             int h = getHeight() - 30; // leave room for labels
             
+            int maxVal = 0;
+            for (int d : targetData) if (d > maxVal) maxVal = d;
+            maxVal = Math.max(4, maxVal); // Minimum 4 for scale
+
             // Draw grid lines
             g2.setColor(new Color(255,255,255, 20));
             for(int i=0; i<4; i++) {
@@ -574,27 +533,28 @@ public class StudentDashboard extends JFrame {
                 g2.drawLine(40, y, w-20, y);
                 g2.setColor(TEXT_DIM);
                 g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
-                g2.drawString((i*2)+" h", 10, y+4);
+                int labelVal = (i * maxVal) / 3;
+                g2.drawString(String.valueOf(labelVal), 15, y+4);
                 g2.setColor(new Color(255,255,255, 20));
             }
             
             // Draw labels
-            String[] days = isWeekly ? new String[]{"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"} : new String[]{"W1", "W2", "W3", "W4", "W1", "W2", "W3"};
             g2.setColor(TEXT_DIM);
             int step = (w - 60) / 6;
             for(int i=0; i<7; i++) {
                 int x = 40 + (i * step);
-                g2.drawString(days[i], x-8, h+20);
+                g2.drawString(dayLabels[i], x-8, h+20);
             }
             
             // Create Path
             Path2D.Float path = new Path2D.Float();
             Path2D.Float fillPath = new Path2D.Float();
             
-            int maxVal = 8;
+            // Path calculation using calculated maxVal
+            int finalMax = maxVal;
             for(int i=0; i<currentData.length; i++) {
                 int x = 40 + (i * step);
-                int y = h - (int)(currentData[i] * h / maxVal);
+                int y = h - (int)(currentData[i] * h / finalMax);
                 
                 if (i == 0) {
                     path.moveTo(x, y);
@@ -602,7 +562,7 @@ public class StudentDashboard extends JFrame {
                     fillPath.lineTo(x, y);
                 } else {
                     int prevX = 40 + ((i-1) * step);
-                    int prevY = h - (int)(currentData[i-1] * h / maxVal);
+                    int prevY = h - (int)(currentData[i-1] * h / finalMax);
                     int cpX1 = prevX + (x - prevX)/2;
                     int cpX2 = prevX + (x - prevX)/2;
                     path.curveTo(cpX1, prevY, cpX2, y, x, y);
@@ -626,7 +586,7 @@ public class StudentDashboard extends JFrame {
             // Draw points
             for(int i=0; i<currentData.length; i++) {
                 int x = 40 + (i * step);
-                int y = h - (int)(currentData[i] * h / maxVal);
+                int y = h - (int)(currentData[i] * h / finalMax);
                 g2.setColor(BG_DARK);
                 g2.fillOval(x-5, y-5, 10, 10);
                 g2.setColor(CYAN);
