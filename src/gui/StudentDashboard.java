@@ -9,9 +9,11 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
+import model.User;
+
 public class StudentDashboard extends JFrame {
 
-    private final LoginFrame.User user;
+    private final User user;
 
     // ── Brand colours (mirrors LoginFrame exactly) ──────────────────────────────
     private static final Color CYAN      = new Color(38,  208, 206);
@@ -24,7 +26,7 @@ public class StudentDashboard extends JFrame {
     private static final Color ACCENT_ORANGE = new Color(255, 150, 100);
     private static final Color ACCENT_YELLOW = new Color(255, 215, 0);
 
-    public StudentDashboard(LoginFrame.User user) {
+    public StudentDashboard(User user) {
         this.user = user;
         setTitle("EXAMIFY – Student Dashboard");
         setSize(1350, 800);
