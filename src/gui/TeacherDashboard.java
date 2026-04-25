@@ -31,8 +31,9 @@ public class TeacherDashboard extends JFrame {
     private final Color HOVER = new Color(237, 242, 247);
 
     private CardLayout cardLayout;
-    private JPanel contentPanel, dashWrap;
+    private JPanel contentPanel, dashWrap, performancePanel;
     private QuizManagementPanel quizPanel;
+    private StudentsPanel studentsPanel;
     private User currentUser;
     private final List<SidebarItem> sidebarItems = new ArrayList<>();
 
@@ -63,8 +64,11 @@ public class TeacherDashboard extends JFrame {
         quizWrap.add(quizPanel, BorderLayout.CENTER);
         contentPanel.add(quizWrap, "quiz");
 
-        contentPanel.add(new StudentsPanel(), "students");
-        contentPanel.add(buildPerformancePanel(), "performance");
+        studentsPanel = new StudentsPanel();
+        contentPanel.add(studentsPanel, "students");
+        
+        performancePanel = buildPerformancePanel();
+        contentPanel.add(performancePanel, "performance");
 
         add(contentPanel, BorderLayout.CENTER);
     }
@@ -88,9 +92,9 @@ public class TeacherDashboard extends JFrame {
         sb.add(Box.createVerticalStrut(4));
         addItem(sb, "Quizzes", false, () -> { quizPanel.showList(); cardLayout.show(contentPanel, "quiz"); });
         sb.add(Box.createVerticalStrut(4));
-        addItem(sb, "Students", false, () -> cardLayout.show(contentPanel, "students"));
+        addItem(sb, "Students", false, () -> { refreshStudents(); cardLayout.show(contentPanel, "students"); });
         sb.add(Box.createVerticalStrut(4));
-        addItem(sb, "Performance", false, () -> cardLayout.show(contentPanel, "performance"));
+        addItem(sb, "Performance", false, () -> { refreshPerformance(); cardLayout.show(contentPanel, "performance"); });
         sb.add(Box.createVerticalGlue());
         addItem(sb, "Logout", false, () -> { dispose(); new LoginFrame().setVisible(true); });
         sb.add(Box.createVerticalStrut(20));
@@ -211,6 +215,22 @@ public class TeacherDashboard extends JFrame {
         JScrollPane sp = new JScrollPane(buildMainDashboard());
         sp.setBorder(null); sp.getVerticalScrollBar().setUnitIncrement(16); sp.getViewport().setBackground(BG);
         dashWrap.add(sp, BorderLayout.CENTER); dashWrap.revalidate(); dashWrap.repaint();
+    }
+
+    private void refreshStudents() {
+        contentPanel.remove(studentsPanel);
+        studentsPanel = new StudentsPanel();
+        contentPanel.add(studentsPanel, "students");
+        contentPanel.revalidate();
+        contentPanel.repaint();
+    }
+
+    private void refreshPerformance() {
+        contentPanel.remove(performancePanel);
+        performancePanel = buildPerformancePanel();
+        contentPanel.add(performancePanel, "performance");
+        contentPanel.revalidate();
+        contentPanel.repaint();
     }
 
     // === STAT CARD ===

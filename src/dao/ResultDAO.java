@@ -122,7 +122,7 @@ public class ResultDAO {
         String sql = "SELECT r.result_id, u.username, q.title, r.score, r.total_marks " +
                      "FROM results r " +
                      "JOIN users u ON r.user_id = u.user_id " +
-                     "JOIN quizzes q ON r.quiz_id = q.quiz_id " +
+                     "JOIN quizzes q ON r.quiz_id = q.numeric_quiz_id " +
                      "ORDER BY r.result_id DESC LIMIT ?";
         List<ResultDetail> details = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
