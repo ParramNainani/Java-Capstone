@@ -269,10 +269,18 @@ public class TeacherDashboard extends JFrame {
                     }
                 }
                 g2.setColor(Color.WHITE); int hole = sz/2; g2.fillOval(cx+(sz-hole)/2, cy+(sz-hole)/2, hole, hole);
-                String pct = total > 0 ? (bd[0]*100/total)+"%": "0%";
-                g2.setColor(DARK); g2.setFont(new Font("SansSerif", Font.BOLD, 22));
+                String pct = total > 0 ? (bd[0] * 100 / total) + "%" : "0%";
+                g2.setColor(DARK);
+                g2.setFont(new Font("SansSerif", Font.BOLD, 22));
                 FontMetrics fm = g2.getFontMetrics();
-                g2.drawString(pct, (getWidth()-fm.stringWidth(pct))/2, getHeight()/2+fm.getAscent()/3);
+                // Draw Percentage
+                g2.drawString(pct, (getWidth() - fm.stringWidth(pct)) / 2, getHeight() / 2 + 5);
+                
+                // Draw "Excellent" Label
+                g2.setFont(new Font("SansSerif", Font.PLAIN, 12));
+                g2.setColor(MUTED);
+                FontMetrics fm2 = g2.getFontMetrics();
+                g2.drawString("Excellent", (getWidth() - fm2.stringWidth("Excellent")) / 2, getHeight() / 2 + 22);
                 g2.dispose();
             }
         };
