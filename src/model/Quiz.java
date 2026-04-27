@@ -1,7 +1,6 @@
 package model;
 
 import java.io.Serializable;
-import java.util.List;
 
 /**
  * Quiz - Represents a quiz assessment.
@@ -10,7 +9,6 @@ public class Quiz implements Serializable {
     private static final long serialVersionUID = 1L;
     private String quizId;
     private String title;
-    private List<QuestionModel> questions;
     private int timeLimit;
     private int numericQuizId;
     private int creatorId;
@@ -18,10 +16,9 @@ public class Quiz implements Serializable {
 
     public Quiz() {}
 
-    public Quiz(String quizId, String title, List<QuestionModel> questions, int timeLimit) {
+    public Quiz(String quizId, String title, int timeLimit) {
         this.quizId = quizId;
         this.title = title;
-        this.questions = questions;
         this.timeLimit = timeLimit;
     }
 
@@ -30,9 +27,6 @@ public class Quiz implements Serializable {
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
-
-    public List<QuestionModel> getQuestions() { return questions; }
-    public void setQuestions(List<QuestionModel> questions) { this.questions = questions; }
 
     public int getTimeLimit() { return timeLimit; }
     public void setTimeLimit(int timeLimit) { this.timeLimit = timeLimit; }
@@ -46,3 +40,4 @@ public class Quiz implements Serializable {
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
 }
+

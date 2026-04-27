@@ -10,6 +10,7 @@ import model.User;
 import model.Result;
 import model.Question;
 import dao.QuestionDAO;
+import dao.ResponseDAO;
 import dao.ResultDAO;
 
 public class QuizFrame extends JFrame {
@@ -29,9 +30,13 @@ public class QuizFrame extends JFrame {
     private final JRadioButton option2 = createOption();
     private final JRadioButton option3 = createOption();
     private final JRadioButton option4 = createOption();
+    private final JTextField shortAnswerField = createShortAnswerField();
     private final JLabel timerLabel = new JLabel("Time Left: 60");
     private int timeLeft = 60;
     private Timer quizTimer;
+
+    // Container panel that holds the options area (center section below question)
+    private JPanel optionsContainer;
 
     public QuizFrame(User user, Quiz quiz) {
         this.user = user;
@@ -86,17 +91,16 @@ public class QuizFrame extends JFrame {
         optionsGroup.add(option3);
         optionsGroup.add(option4);
 
+        // Build the options container — this will be rebuilt dynamically per question
+        optionsContainer = new JPanel();
+        optionsContainer.setOpaque(false);
+        optionsContainer.setLayout(new BoxLayout(optionsContainer, BoxLayout.Y_AXIS));
+
         center.add(questionCountLabel);
         center.add(Box.createVerticalStrut(20));
         center.add(questionArea);
         center.add(Box.createVerticalStrut(20));
-        center.add(option1);
-        center.add(Box.createVerticalStrut(10));
-        center.add(option2);
-        center.add(Box.createVerticalStrut(10));
-        center.add(option3);
-        center.add(Box.createVerticalStrut(10));
-        center.add(option4);
+        center.add(optionsContainer);
 
         JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         bottom.setOpaque(false);
@@ -135,10 +139,10 @@ public class QuizFrame extends JFrame {
             String correctText = q.getCorrectAnswer() != null ? q.getCorrectAnswer().toString() : "";
 
             if ("TRUE_FALSE".equals(qType)) {
-                optionsArray = new String[]{"True", "False", "", ""};
+                optionsArray = new String[]{"True", "False"};
                 correctIndex = "False".equalsIgnoreCase(correctText) ? 1 : 0;
             } else if ("SHORT_ANSWER".equals(qType)) {
-                optionsArray = new String[]{"(Type your answer)", "", "", ""};
+                optionsArray = new String[0]; // no options for short answer
                 correctIndex = -99; // special marker
             } else { // MCQ
                 optionsArray = new String[]{"Option A", "Option B", "Option C", "Option D"};
@@ -157,6 +161,7 @@ public class QuizFrame extends JFrame {
                 }
             }
             QuestionWrapper w = new QuestionWrapper(q.getQuestionText(), optionsArray, correctIndex);
+            w.questionId = q.getQuestionId();
             w.questionType = qType;
             w.correctAnswerText = correctText;
             questions.add(w);
@@ -167,26 +172,67 @@ public class QuizFrame extends JFrame {
         QuestionWrapper q = questions.get(currentIndex);
         questionCountLabel.setText("Question " + (currentIndex + 1) + " of " + questions.size());
         questionArea.setText(q.question);
-        option1.setText(q.options[0]);
-        option2.setText(q.options[1]);
-        option3.setText(q.options[2]);
-        option4.setText(q.options[3]);
 
-        optionsGroup.clearSelection();
+        // Clear and rebuild the options container based on question type
+        optionsContainer.removeAll();
 
-        if (q.userAnswer == 0) option1.setSelected(true);
-        else if (q.userAnswer == 1) option2.setSelected(true);
-        else if (q.userAnswer == 2) option3.setSelected(true);
-        else if (q.userAnswer == 3) option4.setSelected(true);
+        if ("SHORT_ANSWER".equals(q.questionType)) {
+            // Show a text field for short answer
+            shortAnswerField.setText(q.userTextAnswer != null ? q.userTextAnswer : "");
+            optionsContainer.add(shortAnswerField);
+
+            // Hide radio buttons from any stale selection
+            optionsGroup.clearSelection();
+        } else if ("TRUE_FALSE".equals(q.questionType)) {
+            // Show only 2 radio buttons: True and False
+            option1.setText(q.options[0]); // "True"
+            option2.setText(q.options[1]); // "False"
+
+            optionsContainer.add(option1);
+            optionsContainer.add(Box.createVerticalStrut(10));
+            optionsContainer.add(option2);
+
+            optionsGroup.clearSelection();
+            if (q.userAnswer == 0) option1.setSelected(true);
+            else if (q.userAnswer == 1) option2.setSelected(true);
+        } else {
+            // MCQ — show all 4 radio buttons
+            option1.setText(q.options[0]);
+            option2.setText(q.options[1]);
+            option3.setText(q.options[2]);
+            option4.setText(q.options[3]);
+
+            optionsContainer.add(option1);
+            optionsContainer.add(Box.createVerticalStrut(10));
+            optionsContainer.add(option2);
+            optionsContainer.add(Box.createVerticalStrut(10));
+            optionsContainer.add(option3);
+            optionsContainer.add(Box.createVerticalStrut(10));
+            optionsContainer.add(option4);
+
+            optionsGroup.clearSelection();
+            if (q.userAnswer == 0) option1.setSelected(true);
+            else if (q.userAnswer == 1) option2.setSelected(true);
+            else if (q.userAnswer == 2) option3.setSelected(true);
+            else if (q.userAnswer == 3) option4.setSelected(true);
+        }
+
+        optionsContainer.revalidate();
+        optionsContainer.repaint();
     }
 
     private void saveCurrentSelection() {
         QuestionWrapper q = questions.get(currentIndex);
-        if (option1.isSelected()) q.userAnswer = 0;
-        else if (option2.isSelected()) q.userAnswer = 1;
-        else if (option3.isSelected()) q.userAnswer = 2;
-        else if (option4.isSelected()) q.userAnswer = 3;
-        else q.userAnswer = -1;
+
+        if ("SHORT_ANSWER".equals(q.questionType)) {
+            q.userTextAnswer = shortAnswerField.getText();
+        } else {
+            if (option1.isSelected()) q.userAnswer = 0;
+            else if (option2.isSelected()) q.userAnswer = 1;
+            else if (option3.isSelected()) q.userAnswer = 2;
+            else if (option4.isSelected()) q.userAnswer = 3;
+            else q.userAnswer = -1;
+        }
     }
 
     private void nextQuestion() {
@@ -236,9 +282,33 @@ public class QuizFrame extends JFrame {
         ResultDAO resultDAO = new ResultDAO();
         resultDAO.insertResult(result);
 
+        // Save individual responses for each question
+        ResponseDAO responseDAO = new ResponseDAO();
+        for (QuestionWrapper q : questions) {
+            model.Response resp = new model.Response();
+            resp.setResultId(result.getResultId());
+            resp.setQuestionId(q.questionId);
+
+            if ("SHORT_ANSWER".equals(q.questionType)) {
+                resp.setSelectedOptionId(null);
+                resp.setShortAnswerText(q.userTextAnswer != null ? q.userTextAnswer : "");
+                boolean correct = q.userTextAnswer != null && q.correctAnswerText != null &&
+                    q.userTextAnswer.trim().toLowerCase().contains(q.correctAnswerText.trim().toLowerCase());
+                resp.setCorrect(correct);
+            } else {
+                // For MCQ and TRUE_FALSE, store the selected option index + chosen text
+                resp.setSelectedOptionId(q.userAnswer >= 0 ? q.userAnswer : null);
+                String chosenText = (q.userAnswer >= 0 && q.userAnswer < q.options.length)
+                    ? q.options[q.userAnswer] : "";
+                resp.setShortAnswerText(null);
+                resp.setChosenAnswer(chosenText);
+                resp.setCorrect(q.userAnswer == q.correctIndex);
+            }
+
+            responseDAO.insertResponse(resp);
+        }
+
         dispose();
-        // ResultFrame not provided in snippet but should work if present
-        // new ResultFrame(user, score, questions.size()).setVisible(true);
         JOptionPane.showMessageDialog(null, "Quiz submitted! Score: " + score + " / " + questions.size());
     }
 
@@ -262,6 +332,20 @@ public class QuizFrame extends JFrame {
         rb.setFont(new Font("SansSerif", Font.PLAIN, 18));
         rb.setFocusPainted(false);
         return rb;
+    }
+
+    private JTextField createShortAnswerField() {
+        JTextField field = new JTextField();
+        field.setFont(new Font("SansSerif", Font.PLAIN, 18));
+        field.setForeground(Color.WHITE);
+        field.setBackground(new Color(255, 255, 255, 30));
+        field.setCaretColor(Color.WHITE);
+        field.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(126, 220, 223), 1),
+            new EmptyBorder(12, 14, 12, 14)
+        ));
+        field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+        return field;
     }
 
     private JButton createPrimaryButton(String text) {
@@ -289,6 +373,7 @@ public class QuizFrame extends JFrame {
         String[] options;
         int correctIndex;
         int userAnswer = -1;
+        int questionId;
         String questionType = "MCQ";
         String correctAnswerText = "";
         String userTextAnswer = "";

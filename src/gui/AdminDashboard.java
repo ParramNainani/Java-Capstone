@@ -20,17 +20,15 @@ public class AdminDashboard extends JFrame {
 
         // 🔹 Sidebar
         JPanel sidebar = new JPanel();
-        sidebar.setLayout(new GridLayout(5, 1, 10, 10));
+        sidebar.setLayout(new GridLayout(4, 1, 10, 10));
 
         JButton btnQuestions = new JButton("Manage Questions");
         JButton btnQuiz = new JButton("Create Quiz");
         JButton btnAnalytics = new JButton("Analytics");
-        JButton btnCertificates = new JButton("Certificates");
 
         sidebar.add(btnQuestions);
         sidebar.add(btnQuiz);
         sidebar.add(btnAnalytics);
-        sidebar.add(btnCertificates);
 
         // 🔹 Main Panel with CardLayout
         cardLayout = new CardLayout();
@@ -39,13 +37,11 @@ public class AdminDashboard extends JFrame {
         mainPanel.add(new QuestionPanel(), "questions");
         mainPanel.add(new JLabel("Quiz Creation Panel (Coming Soon)"), "quiz");
         mainPanel.add(new JLabel("Analytics Panel (Coming Soon)"), "analytics");
-        mainPanel.add(new JLabel("Certificate Panel (Coming Soon)"), "cert");
 
         // 🔹 Button Actions
         btnQuestions.addActionListener(e -> cardLayout.show(mainPanel, "questions"));
         btnQuiz.addActionListener(e -> cardLayout.show(mainPanel, "quiz"));
         btnAnalytics.addActionListener(e -> cardLayout.show(mainPanel, "analytics"));
-        btnCertificates.addActionListener(e -> cardLayout.show(mainPanel, "cert"));
 
         add(sidebar, BorderLayout.WEST);
         add(mainPanel, BorderLayout.CENTER);
